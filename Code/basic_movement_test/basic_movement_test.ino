@@ -3,6 +3,8 @@
 #define ID_NUM 1
 #define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
 
+int angles[7] = {90, 60, 30, 0, -30, -60, -90};
+
 Dynamixel Dxl(DXL_BUS_SERIAL1);
 
 void setup() {
@@ -17,28 +19,57 @@ void setup() {
   Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
 }
 
-void loop() {
-  for(int i = -45; i<45;i+=5)
-  {
-    Dxl.goalPosition(1, dxlAngle(i)); //ID 1 dynamixel moves to position 1
-    delay(300);
-  }
+void loop()
+{
+  moveDxl(1,3);
+  moveDxl(2,3);
+  delay(1000);
   
-  Dxl.goalPosition(1, dxlAngle(0));//ID 1 dynamixel moves to position 1023
+  moveDxl(1,0);
+  moveDxl(2,3);
+  delay(1000);
+  
+  moveDxl(1,0);
+  moveDxl(2,5);
+  delay(1000);
+  
+  
+  moveDxl(1,3);
+  moveDxl(2,5);
+  delay(1000);
+  
+  
+ /* moveDxl(1,3);
+  moveDxl(2,3);
   delay(500);
   
-  for(int i = -45; i<45;i+=5)
-  {
-    Dxl.goalPosition(2, dxlAngle(i)); //ID 1 dynamixel moves to position 1
-    delay(300);
-  }
-  
-  Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
+  moveDxl(1,3);
+  moveDxl(2,3);
   delay(500);
+  
+  moveDxl(1,3);
+  moveDxl(2,3);
+  delay(500);
+  
+  moveDxl(1,3);
+  moveDxl(2,3);
+  delay(500);
+  
+  moveDxl(1,3);
+  moveDxl(2,3);
+  delay(500);
+  
+  moveDxl(1,3);
+  moveDxl(2,3);
+  delay(500);*/
 }
 
+void moveDxl(int id, int angleIndex)
+{
+  Dxl.setPosition(id, dxlAngle(angles[angleIndex]), 300); 
+}
 
-int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90°~90° angle
+int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle
 {
   int anglePos = (358.4 + DXL_POSITIONS_PER_DEGREE * angleDEG);
   
