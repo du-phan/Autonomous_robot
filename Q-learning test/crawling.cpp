@@ -84,10 +84,22 @@ float get_next_state(current_action)
     return;
 }
 
+int indexOfMax(float[4] maxArray)//#F#
+{
+	int index = 0;
+	for(int i = 1;i<4;i++)
+	{
+		if(maxArray[i] > maxArray[index])
+			index = i;
+	}
+	return index;
+}
+
 void moveMotors(int state) //#F#
 {
 	elbowIndex = state%SERVO_NUM_STATES;
 	shoulderIndex = (state - elbowIndex)/SERVO_NUM_STATES;
+	
 	moveDxl(shoulderIndex,elbowIndex);
 }
 
