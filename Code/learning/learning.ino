@@ -8,6 +8,7 @@
 #define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
 #define SERVO_NUM_STATES 7
 #define DX_SPEED 300
+#define PRESENT_POS 54  //address of position in dynamixels
 
 int angles[7] = {90, 60, 30, 0, -30, -60, -90};
 
@@ -19,7 +20,6 @@ static float BETA = 0.0;  // magnitude of noise added to choice
 static float GAMMA = 0.999; // discount factor
 static float RANDOM_ACTION_RATE = 0.5;
 static float RANDOM_ACTION_DECAY_RATE = .99;
-static int RND_MAX;
 
 static float qtable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 
@@ -47,22 +47,22 @@ int get_action(float reward)
       
       randomSeed(SEED); // initialize random number generator
 
-      //current_action = qtable[current_state].argsort()[-1];
+      current_action = indexOfMax(qtable[current_state]) + 1;//choose action with the highest Q value
 
       return current_action;
    }
 
-   float random_number = (1.0 * random(RND_MAX) / RND_MAX);
+   float random_number = random(100) / 100.0;
 
    bool choose_random_action = (1.0 - RANDOM_ACTION_RATE) <= random_number;
 
    if (choose_random_action)
    {
-        next_action = 0;// uni(0, NUM_ACTIONS); //###
+     next_action = random(4) + 1; //rand from 1~4
    }
    else
    {
-        ;// next_action = qtable[next_state].argsort()[-1];
+     next_action = indexOfMax(qtable[next_state]) + 1;//choose action with the highest Q value
    }
 
    qtable[current_state][current_action] = (1 - ALPHA) * qtable[current_state][current_action] + ALPHA * (reward + GAMMA * qtable[next_state][next_action]);
@@ -136,7 +136,6 @@ void setup(){
 
 void loop()
 {
-  moveDxl(3,3);
   delay(1000);
 }
 
@@ -149,6 +148,8 @@ void moveDxl(int index1, int index2)//move joints to this position
  
   /*while(not there yet)
   {
+    shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
+    elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
     delay(10);
   }*/
 }
