@@ -56,6 +56,7 @@ static int current_action, next_action;
 static int current_state, next_state;
 
 int wheelRot = 0, prevWheelRot = 0;//position of the wheel
+int distanceTravelled = 0;
 
 void reset_controller()
 {
@@ -105,7 +106,12 @@ int get_action(float reward)
 
 float get_reward(int current_action)
 {
-    return 0;
+  float reward = 0;
+  
+  reward = distanceTravelled;//ignore small values? => robot shaking
+  
+  distanceTravelled = 0;
+  return reward;
 }
 
 int get_next_state(int current_action)
@@ -166,12 +172,18 @@ void setup()
   Dxl.goalPosition(1, dxlAngle(0));//ID 1 dynamixel moves to position 1023
 
   Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
+  
+  current_action = get_action(0.0);// initialize the model
+  moveMotors(next_state);//move motors into position
+  distanceTravelled = 0;//re-initialize reward stuff
 }
 
 void loop()
 {
-  
-  delay(1000);
+  float reward = get_reward(current_action);
+  next_state = get_next_state(current_action);
+  current_action = get_action(reward);
+  moveMotors(next_state);//move motors into position
 }
 
 void moveDxl(int index1, int index2)//move joints to this position
@@ -180,13 +192,16 @@ void moveDxl(int index1, int index2)//move joints to this position
   int angle2 = dxlAngle(angles[index2]);
   Dxl.setPosition(ID_SHOULDER, angle1, DX_SPEED); 
   Dxl.setPosition(ID_ELBOW,    angle2, DX_SPEED);
- 
-  /*while(not there yet)
+  
+  int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
+  
+  while((abs(shoulderPos - angle1) > 5) || (abs(elbowPos - angle2) > 5))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
+    readEncoder();
     delay(10);
-  }*/
+  }
 }
 
 int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle
@@ -223,7 +238,7 @@ void moveMotors(int state)
 void readEncoder()//updates wheelRot, +ve values => moving forward
 {
   int currentWheelRot = encL.read();
-  wheelRot = currentWheelRot - prevWheelRot;
+  distanceTravelled += (currentWheelRot - prevWheelRot);
   prevWheelRot = currentWheelRot;
   if(wheelRot > 512)//corrects 1023 to 0 error
     wheelRot -= 1023;
