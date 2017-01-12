@@ -60,7 +60,7 @@ int distanceTravelled = 0;
 
 void reset_controller()
 {
-   current_state = next_state = 0;
+   current_state = next_state = 24;
    current_action = next_action = -1; // "null" action value
 }
 
@@ -95,7 +95,9 @@ int get_action(float reward)
    {
      next_action = indexOfMax(qtable[next_state]) + 1;//choose action with the highest Q value
    }
-
+   
+   RANDOM_ACTION_RATE *= RANDOM_ACTION_DECAY_RATE;
+   
    qtable[current_state][current_action] = (1 - ALPHA) * qtable[current_state][current_action] + ALPHA * (reward + GAMMA * qtable[next_state][next_action]);
 
    current_state = next_state;
@@ -169,11 +171,21 @@ void setup()
   encL.begin();//connect to encoder
 
   pinMode(BOARD_LED_PIN, OUTPUT);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);//flash quickly at start
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  
   Dxl.goalPosition(1, dxlAngle(0));//ID 1 dynamixel moves to position 1023
 
   Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
   
   current_action = get_action(0.0);// initialize the model
+  debugging();
   moveMotors(next_state);//move motors into position
   distanceTravelled = 0;//re-initialize reward stuff
 }
@@ -183,7 +195,18 @@ void loop()
   float reward = get_reward(current_action);
   next_state = get_next_state(current_action);
   current_action = get_action(reward);
+  //debugging();
+  SerialUSB.print("reward: ");
+  SerialUSB.println(reward);
+  SerialUSB.print("  ||  next State: ");
+  SerialUSB.println(next_state);
   moveMotors(next_state);//move motors into position
+}
+
+void debugging()
+{
+  SerialUSB.print("next State: ");
+  SerialUSB.println(next_state);
 }
 
 void moveDxl(int index1, int index2)//move joints to this position
@@ -195,13 +218,14 @@ void moveDxl(int index1, int index2)//move joints to this position
   
   int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
   
-  while((abs(shoulderPos - angle1) > 5) || (abs(elbowPos - angle2) > 5))
+  while((abs(shoulderPos - angle1) > 50) || (abs(elbowPos - angle2) > 50))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
     readEncoder();
     delay(10);
   }
+  delay(50);
 }
 
 int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle
