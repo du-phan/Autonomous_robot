@@ -1,3 +1,5 @@
+#include <AS5040.h>//encoder
+
 #define W_INIT 0.0
 #define NUM_STATES 49
 #define NUM_ACTIONS 4
