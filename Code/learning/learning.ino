@@ -1,66 +1,71 @@
-#include <ctime>
-#include <stdlib.h>
-#include <stdio.h>
-
-#define sqr(x) ( (x) * (x) )
 #define W_INIT 0.0
 #define NUM_STATES 49
 #define NUM_ACTIONS 4
 
+#define DXL_BUS_SERIAL1 1  //Dynamixel on Serial1(USART1)  <-OpenCM9.04
+#define ID_SHOULDER 1
+#define ID_ELBOW 2
+#define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
+#define SERVO_NUM_STATES 7
+#define DX_SPEED 300
 
-static int SEED = 38000; //Grenoble rpz
+int angles[7] = {90, 60, 30, 0, -30, -60, -90};
+
+Dynamixel Dxl(DXL_BUS_SERIAL1);
+
+static int SEED = 38000;  //Grenoble rpz
 static float ALPHA = 0.5; // learning rate parameter
-static float BETA = 0.0; // magnitude of noise added to choice
+static float BETA = 0.0;  // magnitude of noise added to choice
 static float GAMMA = 0.999; // discount factor
 static float RANDOM_ACTION_RATE = 0.5;
 static float RANDOM_ACTION_DECAY_RATE = .99;
-static int RAND_MAX;
+static int RND_MAX;
 
 static float qtable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 
-static first_time = 1;
+static int first_time = 1;
 static int current_action, next_action;
 static int current_state, next_state;
 
-void reset_controller(void)
+void reset_controller()
 {
    current_state = next_state = 0;
-   next_action = next_action = -1; // "null" action value
+   current_action = next_action = -1; // "null" action value
 }
 
 int get_action(float reward)
 {
-
    if (first_time)
    {
       first_time = 0;
       reset_controller();   // set state and action to null values
 
-      for (i = 0; i < NUM_STATES; i++)
-         for (j = 0; j < NUM_ACTIONS; j++) // num_actions
+      for (int i = 0; i < NUM_STATES; i++)
+         for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
             qtable[i][j] = W_INIT;
 
-      srandom(SEED); // initialize random number generator
+      
+      randomSeed(SEED); // initialize random number generator
 
       //current_action = qtable[current_state].argsort()[-1];
 
-      return current_action
+      return current_action;
    }
 
-   float random_number =  (1.0 * random(RAND_MAX) / RAND_MAX);
+   float random_number = (1.0 * random(RND_MAX) / RND_MAX);
 
    bool choose_random_action = (1.0 - RANDOM_ACTION_RATE) <= random_number;
 
    if (choose_random_action)
    {
-        next_action = uni(0, NUM_ACTIONS);
+        next_action = 0;// uni(0, NUM_ACTIONS); //###
    }
    else
    {
-        // next_action = qtable[next_state].argsort()[-1];
+        ;// next_action = qtable[next_state].argsort()[-1];
    }
 
-   qtable[current_state][current_action] = (1 - ALPHA) * qtable[current_state][current_action] + ALPHA * (reward + GAMMA * qtable[next_state][next_action])
+   qtable[current_state][current_action] = (1 - ALPHA) * qtable[current_state][current_action] + ALPHA * (reward + GAMMA * qtable[next_state][next_action]);
 
    current_state = next_state;
    current_action = next_action;
@@ -68,40 +73,56 @@ int get_action(float reward)
    return current_action;
 }
 
-float get_reward(current_action)
+float get_reward(int current_action)
 {
-    return;
+    return 0;
 }
 
-float get_next_state(current_action)
+int get_next_state(int current_action)
 {
-    return;
+    int new_computed_state;
+
+    if (current_action == 1) // (+1,0)
+    {
+      new_computed_state = current_state + SERVO_NUM_STATES;
+    }
+    else if (current_action == 2) // (-1,0)
+    {
+      new_computed_state = current_state - SERVO_NUM_STATES;
+    }
+    else if (current_action == 3) // (0,+1)
+    {
+      new_computed_state = current_state + 1;
+    }
+    else // (0,-1)
+    {
+      new_computed_state = current_state - 1;
+    }
+
+    if ((new_computed_state < 0) || (new_computed_state >= NUM_STATES))
+    {
+      return current_state;
+    }
+    else
+    {
+      return new_computed_state;
+    }
 }
 
 void q_learning()
 {
     current_action = get_action(0.0); // initialize the model
 
-    while(True):
-
-        float reward = get_reward(current_action);
-
-        next_state = get_next_state(current_action);
-
-        current_action = get_action(reward);
-
+    while(true)
+    {
+      float reward = get_reward(current_action);
+      next_state = get_next_state(current_action);
+      current_action = get_action(reward);
+    }
 }
 
-#define DXL_BUS_SERIAL1 1  //Dynamixel on Serial1(USART1)  <-OpenCM9.04
 
-#define ID_NUM 1
-#define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
-
-int angles[7] = {90, 60, 30, 0, -30, -60, -90};
-
-Dynamixel Dxl(DXL_BUS_SERIAL1);
-
-void setup() {
+void setup(){
   // Initialize the dynamixel bus:
   // Dynamixel 2.0 Baudrate -> 0: 9600, 1: 57600, 2: 115200, 3: 1Mbps
   Dxl.begin(3);
@@ -115,54 +136,21 @@ void setup() {
 
 void loop()
 {
-
-
-  moveDxl(1,3);
-  moveDxl(2,3);
+  moveDxl(3,3);
   delay(1000);
-
-  moveDxl(1,0);
-  moveDxl(2,3);
-  delay(1000);
-
-  moveDxl(1,0);
-  moveDxl(2,5);
-  delay(1000);
-
-
-  moveDxl(1,3);
-  moveDxl(2,5);
-  delay(1000);
-
-
- /* moveDxl(1,3);
-  moveDxl(2,3);
-  delay(500);
-
-  moveDxl(1,3);
-  moveDxl(2,3);
-  delay(500);
-
-  moveDxl(1,3);
-  moveDxl(2,3);
-  delay(500);
-
-  moveDxl(1,3);
-  moveDxl(2,3);
-  delay(500);
-
-  moveDxl(1,3);
-  moveDxl(2,3);
-  delay(500);
-
-  moveDxl(1,3);
-  moveDxl(2,3);
-  delay(500);*/
 }
 
-void moveDxl(int id, int angleIndex)
+void moveDxl(int index1, int index2)//move joints to this position
 {
-  Dxl.setPosition(id, dxlAngle(angles[angleIndex]), 300);
+  int angle1 = dxlAngle(angles[index1]);
+  int angle2 = dxlAngle(angles[index2]);
+  Dxl.setPosition(ID_SHOULDER, angle1, DX_SPEED); 
+  Dxl.setPosition(ID_ELBOW,    angle2, DX_SPEED);
+ 
+  /*while(not there yet)
+  {
+    delay(10);
+  }*/
 }
 
 int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle
@@ -177,20 +165,20 @@ int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° 
   return anglePos;
 }
 
-int indexOfMax(float[4] maxArray)
+int indexOfMax(float maxArray[4])
 {
-	int index = 0;
-	for(int i = 1;i<4;i++)
-	{
-		if(maxArray[i] > maxArray[index])
-			index = i;
-	}
-	return index;
+  int index = 0;
+  for(int i = 1;i<4;i++)
+  {
+    if(maxArray[i] > maxArray[index])
+    index = i;
+  }
+  return index;
 }
 
 void moveMotors(int state)
 {
-	elbowIndex = state%SERVO_NUM_STATES;
-	shoulderIndex = (state - elbowIndex)/SERVO_NUM_STATES;
-	moveDxl(shoulderIndex,elbowIndex);
+  int elbowIndex = state%SERVO_NUM_STATES;
+  int shoulderIndex = (state - elbowIndex)/SERVO_NUM_STATES;
+  moveDxl(shoulderIndex,elbowIndex);
 }
