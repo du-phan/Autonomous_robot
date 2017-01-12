@@ -83,3 +83,49 @@ void readEncoder()
 
 
 
+
+
+/*
+ * 
+int state = 0;
+int previousState = 0;
+
+int Q[3][3] = {
+  0,0,0;
+  0,0,0;
+  0,0,0};
+  
+int R[3][3] = {
+  0,0,0;
+  0,0,0;
+100,0,0};
+
+int gains[3] = {0,0,0};
+
+float gamma = 0.8;
+long randNumber;
+
+void setup()
+{
+  Serial.begin(115200);
+  randomSeed(analogRead(0));
+  state = random(3);
+}
+
+
+void loop()
+{
+  
+  
+  gains = 
+  state = random(3);
+  previousState = state;
+  Serial.print("State: ");
+  Serial.println(state);
+  delay(1000);
+}
+
+
+*/
+ */
+
