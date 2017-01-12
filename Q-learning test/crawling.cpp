@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <random>
 
-std::random_device rd;     // only used once to initialise (seed) engine
-std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+std::random_device rd;      // only used once to initialise (seed) engine
+std::mt19937 rng(rd());     // random-number engine used (Mersenne-Twister in this case)
 std::uniform_int_distribution<int> uni(min,max); // guaranteed unbiased
 
 
@@ -15,9 +15,9 @@ std::uniform_int_distribution<int> uni(min,max); // guaranteed unbiased
 #define NUM_ACTIONS 4
 
 
-static int SEED = 38000; //Grenoble rpz
-static float ALPHA = 0.5; // learning rate parameter
-static float BETA = 0.0; // magnitude of noise added to choice
+static int SEED = 38000;  	//Grenoble rpz
+static float ALPHA = 0.5; 	// learning rate parameter
+static float BETA = 0.0;  	// magnitude of noise added to choice
 static float GAMMA = 0.999; // discount factor
 static float RANDOM_ACTION_RATE = 0.5;
 static float RANDOM_ACTION_DECAY_RATE = .99;
@@ -31,7 +31,7 @@ static int current_state, next_state;
 void reset_controller(void)
 {
    current_state = next_state = 0;
-   next_action = next_action = -1; // "null" action value
+   current_action = next_action = -1; // "null" action value
 }
 
 int get_action(float reward)
@@ -82,6 +82,13 @@ float get_reward(current_action)
 float get_next_state(current_action)
 {
     return;
+}
+
+void moveMotors(int state) //#F#
+{
+	elbowIndex = state%SERVO_NUM_STATES;
+	shoulderIndex = (state - elbowIndex)/SERVO_NUM_STATES;
+	moveDxl(shoulderIndex,elbowIndex);
 }
 
 void q_learning()
