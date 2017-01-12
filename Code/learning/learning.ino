@@ -120,30 +120,25 @@ int get_next_state(int current_action)
 {
     int new_computed_state;
 
-    if (current_action == 1) // (+1,0)
+    if ((current_action == 1) && !(current_state < 7)) // (+1,0) up
     {
-      new_computed_state = current_state + SERVO_NUM_STATES;
+      return = current_state + SERVO_NUM_STATES;
     }
-    else if (current_action == 2) // (-1,0)
+    else if ((current_action == 2) && !(current_state > 41)) // (-1,0) down
     {
-      new_computed_state = current_state - SERVO_NUM_STATES;
+      return = current_state - SERVO_NUM_STATES;
     }
-    else if (current_action == 3) // (0,+1)
+    else if ((current_action == 3) && !((current_state%7) == 6))// (0,+1) right
     {
-      new_computed_state = current_state + 1;
+      return = current_state + 1;
     }
-    else // (0,-1)
+    else if ((current_action == 3) && !((current_state%7) == 0)) // (0,-1) left
     {
-      new_computed_state = current_state - 1;
+      return = current_state - 1;
     }
-
-    if ((new_computed_state < 0) || (new_computed_state >= NUM_STATES))
+    else//edge case
     {
-      return current_state;
-    }
-    else
-    {
-      return new_computed_state;
+      return = current_state;
     }
 }
 
