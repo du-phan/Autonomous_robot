@@ -25,7 +25,7 @@
 #include "AS5040.h"
 
 
-AS5040::AS5040 (byte pinCLK, byte pinCS, byte pinDO, byte pinPROG) 
+AS5040::AS5040 (char pinCLK, char pinCS, char pinDO, char pinPROG) 
 {
   _pinCLK  = pinCLK ;
   _pinCS   = pinCS ;
@@ -35,32 +35,22 @@ AS5040::AS5040 (byte pinCLK, byte pinCS, byte pinDO, byte pinPROG)
   _status  = 0xFF ;  // invalid status
 }
 
-boolean AS5040::begin ()
-{
-  return begin (0) ;
-}
-
-boolean AS5040::begin (byte mode)
-{
-  return begin (mode, false, 0) ;
-}
-
-boolean AS5040::begin (byte mode, boolean reverse, unsigned int offset)
+bool AS5040::begin()
 {
   int config_word =
-    (reverse ? 0x8000 : 0x0000) | 
-    ((offset & 0x3FF) << 5) |
-    (mode & 0x1F) ;
+    (0 ? 0x8000 : 0x0000) | 
+    ((0 & 0x3FF) << 5) |
+    (0 & 0x1F) ;
 
-  pinMode (_pinCLK, OUTPUT) ;  digitalWrite (_pinCLK, HIGH) ;
+  pinMode (_pinCLK, 1) ;  digitalWrite (_pinCLK, 1) ;
   if (_pinPROG != 0xFF)
   {
-    pinMode (_pinPROG, OUTPUT) ; digitalWrite (_pinPROG, LOW) ;
+    pinMode (_pinPROG, 1) ; digitalWrite (_pinPROG, 0) ;
   }
-  pinMode (_pinCS, OUTPUT) ;   digitalWrite (_pinCS, HIGH) ;
+  pinMode (_pinCS, 1) ;   digitalWrite (_pinCS, 1) ;
   pinMode (_pinDO, INPUT_PULLUP) ;
 
-  byte count = 0 ;
+  char count = 0 ;
   while (read (), (_status & AS5040_STATUS_OCF) == 0)
   {
     if (count > 30)
@@ -74,33 +64,33 @@ boolean AS5040::begin (byte mode, boolean reverse, unsigned int offset)
     // no initial program sequence, we're done already
     return true ;
   }
-  digitalWrite (_pinCS, LOW) ;
+  digitalWrite (_pinCS, 0) ;
   delayMicroseconds (1) ;
-  digitalWrite (_pinCLK, LOW) ;
+  digitalWrite (_pinCLK, 0) ;
   delayMicroseconds (1) ;
-  digitalWrite (_pinPROG, HIGH) ;
+  digitalWrite (_pinPROG, 1) ;
   delayMicroseconds (5) ;
-  digitalWrite (_pinCS, HIGH) ;
+  digitalWrite (_pinCS, 1) ;
   delayMicroseconds (5) ;
 
   unsigned int MSK = 0x8000 ;
-  for (byte i = 0 ; i < 16 ; i++)
+  for (char i = 0 ; i < 16 ; i++)
   {
-    digitalWrite (_pinPROG, (config_word & MSK) ? HIGH : LOW) ;
+    digitalWrite (_pinPROG, (config_word & MSK) ? 1 : 0) ;
     MSK >>= 1 ;
-    digitalWrite (_pinCLK, HIGH) ;
+    digitalWrite (_pinCLK, 1) ;
     delayMicroseconds (1) ;
-    digitalWrite (_pinCLK, LOW) ;
+    digitalWrite (_pinCLK, 0) ;
     delayMicroseconds (1) ;
   }
   
-  digitalWrite (_pinPROG, LOW) ;
+  digitalWrite (_pinPROG, 0) ;
   delayMicroseconds (1) ;
-  digitalWrite (_pinCS, LOW) ;
+  digitalWrite (_pinCS, 0) ;
   delayMicroseconds (1) ;
-  digitalWrite (_pinCS, HIGH) ; // ready for reads
+  digitalWrite (_pinCS, 1) ; // ready for reads
   delayMicroseconds (1) ;
-  digitalWrite (_pinCLK, HIGH) ;
+  digitalWrite (_pinCLK, 1) ;
   return true ;
 }
 
@@ -108,28 +98,28 @@ boolean AS5040::begin (byte mode, boolean reverse, unsigned int offset)
 // read position value, squirrel away status
 unsigned int AS5040::read ()
 {
-  digitalWrite (_pinCS, LOW) ;
+  digitalWrite (_pinCS, 0) ;
   unsigned int value = 0 ;
-  for (byte i = 0 ; i < 10 ; i++)
+  for (char i = 0 ; i < 10 ; i++)
   {
-    digitalWrite (_pinCLK, LOW) ;
-    digitalWrite (_pinCLK, HIGH) ;
+    digitalWrite (_pinCLK, 0) ;
+    digitalWrite (_pinCLK, 1) ;
     value = (value << 1) | digitalRead (_pinDO) ;
   }
-  byte status = 0 ;
-  for (byte i = 0 ; i < 6 ; i++)
+  char status = 0 ;
+  for (char i = 0 ; i < 6 ; i++)
   {
-    digitalWrite (_pinCLK, LOW) ;
-    digitalWrite (_pinCLK, HIGH) ;
+    digitalWrite (_pinCLK, 0) ;
+    digitalWrite (_pinCLK, 1) ;
     status = (status << 1) | digitalRead (_pinDO) ;
   }
-  digitalWrite (_pinCS, HIGH) ;
+  digitalWrite (_pinCS, 1) ;
   _parity = even_parity (value >> 2) ^ even_parity (value & 3) ^ even_parity (status) ;
   _status = status >> 1 ;
   return value ;
 }
 
-byte AS5040::even_parity (byte val)
+char AS5040::even_parity (char val)
 {
   val = (val >> 1) ^ val ;
   val = (val >> 2) ^ val ;
@@ -139,13 +129,13 @@ byte AS5040::even_parity (byte val)
 
 
 // raw status from latest read, 5 bit value
-byte AS5040::status ()
+char AS5040::status ()
 {
   return _status ;
 }
 
 // indicate if latest status implies valid data
-boolean AS5040::valid ()
+bool AS5040::valid ()
 {
   return _parity == 0 && (_status & 0x18) == 0x10 && (_status & 3) != 3 ;
 }

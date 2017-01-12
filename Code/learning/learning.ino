@@ -1,5 +1,3 @@
-#include <AS5040.h>//encoder
-
 #define W_INIT 0.0
 #define NUM_STATES 49
 #define NUM_ACTIONS 4
@@ -14,7 +12,35 @@
 
 int angles[7] = {90, 60, 30, 0, -30, -60, -90};
 
-Dynamixel Dxl(DXL_BUS_SERIAL1);
+class AS5040
+{
+ public:
+  AS5040 (byte pinCLK, byte pinCS, byte pinDO, byte pinPROG = 0xFF) ;
+
+  boolean begin () ;
+  boolean begin (byte mode) ;
+  boolean begin (byte mode, boolean reverse, unsigned int offset) ;
+
+  unsigned int read () ; 
+  byte status () ;
+  boolean valid () ;
+  int Zaxis () ;
+
+ private:
+
+  byte _pinCLK ;
+  byte _pinCS ;
+  byte _pinDO ;
+  byte _pinPROG ;
+
+  byte _status ;
+  byte _parity ;
+
+  byte even_parity (byte val) ;
+} ;
+
+Dynamixel Dxl(DXL_BUS_SERIAL1);  //dynamixel bus
+AS5040 encL (16, 17, 18); //encoder
 
 static int SEED = 38000;  //Grenoble rpz
 static float ALPHA = 0.5; // learning rate parameter
@@ -28,6 +54,8 @@ static float qtable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 static int first_time = 1;
 static int current_action, next_action;
 static int current_state, next_state;
+
+int wheelRot = 0, prevWheelRot = 0;//position of the wheel
 
 void reset_controller()
 {
@@ -124,13 +152,17 @@ void q_learning()
 }
 
 
-void setup(){
+void setup()
+{
+  SerialUSB.println("boop");
   // Initialize the dynamixel bus:
   // Dynamixel 2.0 Baudrate -> 0: 9600, 1: 57600, 2: 115200, 3: 1Mbps
   Dxl.begin(3);
   Dxl.jointMode(1); //jointMode() is to use position mode
   Dxl.jointMode(2); //jointMode() is to use position mode
+  encL.begin();//connect to encoder
 
+  pinMode(BOARD_LED_PIN, OUTPUT);
   Dxl.goalPosition(1, dxlAngle(0));//ID 1 dynamixel moves to position 1023
 
   Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
@@ -138,6 +170,7 @@ void setup(){
 
 void loop()
 {
+  
   delay(1000);
 }
 
@@ -184,4 +217,16 @@ void moveMotors(int state)
   int elbowIndex = state%SERVO_NUM_STATES;
   int shoulderIndex = (state - elbowIndex)/SERVO_NUM_STATES;
   moveDxl(shoulderIndex,elbowIndex);
+}
+
+
+void readEncoder()//updates wheelRot, +ve values => moving forward
+{
+  int currentWheelRot = encL.read();
+  wheelRot = currentWheelRot - prevWheelRot;
+  prevWheelRot = currentWheelRot;
+  if(wheelRot > 512)//corrects 1023 to 0 error
+    wheelRot -= 1023;
+  if(wheelRot < -512)//corrects 0 to 1023 error
+    wheelRot += 1023;
 }

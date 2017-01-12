@@ -24,6 +24,11 @@
 #ifndef AS5040_h
 #define AS5040_h
 
+#if defined(ARDUINO) && ARDUINO >= 100
+  #include "Arduino.h"
+#else
+  #include "WProgram.h"
+#endif
 
 // mode defines
 #define AS5040_QUADRATURE  0x1
