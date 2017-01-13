@@ -1,16 +1,17 @@
 #define W_INIT 0.0
-#define NUM_STATES 49
+#define NUM_STATES 9
 #define NUM_ACTIONS 4
 
 #define DXL_BUS_SERIAL1 1  //Dynamixel on Serial1(USART1)  <-OpenCM9.04
 #define ID_SHOULDER 1
 #define ID_ELBOW 2
 #define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
-#define SERVO_NUM_STATES 7
+#define SERVO_NUM_STATES 3
 #define DX_SPEED 200
 #define PRESENT_POS 54  //address of position in dynamixels
 
-int angles[7] = {75, 50, 25, 0, -25, -50, -75};
+//int angles[7] = {75, 50, 25, 0, -25, -50, -75};
+int angles[7] = {60, 0, -60};
 
 class AS5040
 {
@@ -47,7 +48,7 @@ float ALPHA = 0.8; // learning rate parameter
 float BETA = 0.0;  // magnitude of noise added to choice
 float GAMMA = 0.5; // discount factor
 float randomActionRate = 1.00;//100% at start
-#define RANDOM_ACTION_DECAY_RATE 0.996;
+#define RANDOM_ACTION_DECAY_RATE 0.98;
 
 float qtable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 
@@ -62,8 +63,8 @@ unsigned long iteration = 0;//number of movements made
 
 void reset_controller()
 {
-   current_state = 24;
-   next_state = 24;
+   current_state = NUM_STATES/2;
+   next_state = NUM_STATES/2;
    current_action = -1;
    next_action = -1; // "null" action value
 }
@@ -107,13 +108,10 @@ int get_action(float reward)
    bool choose_random_action = (1.0 - randomActionRate) <= random_number;
 
    if (choose_random_action)
-   {
      next_action = random(4); //rand from 0~3
-   }
    else
-   {
      next_action = indexOfMax(qtable[next_state]);//choose action with the highest Q value
-   }
+     
    //SerialUSB.print("  ||  getA3cur:");
    //SerialUSB.print(next_state);
    
@@ -146,10 +144,8 @@ float get_reward(int current_action)
 //  SerialUSB.print(distanceTravelled);
   float reward = 0;
   
-  /*if(abs(distanceTravelled) < 15)
-  {
-    distanceTravelled = 0;
-  }*/
+//  if(abs(distanceTravelled) < 15)
+//    distanceTravelled = 0;
   
   reward = distanceTravelled - 1;//ignore small values? => robot shaking
   distanceTravelled = 0;
@@ -162,7 +158,10 @@ float get_reward(int current_action)
 int get_next_state(int current_action)
 {
   int next_state_tmp;
-  if ((current_action == 0) && !(current_state > (SERVO_NUM_STATES * (SERVO_NUM_STATES - 1) - 1 ))) // (+1,0) down
+  
+  SerialUSB.print("\tcurrent_action = ");
+  SerialUSB.println(current_action);
+  if ((current_action == 0) && !(current_state > (NUM_STATES - SERVO_NUM_STATES - 1 ))) // (+1,0) down
   {
     next_state_tmp = current_state + SERVO_NUM_STATES;
   }
@@ -176,18 +175,13 @@ int get_next_state(int current_action)
   }
   else if ((current_action == 3) && !((current_state%SERVO_NUM_STATES) == 0)) // (0,-1) left
   {
-//      SerialUSB.print("  ||  cur4state:");
-//      SerialUSB.print(current_state);
-//      SerialUSB.print("  ||  cur4action:");
-//      SerialUSB.print(current_action);
-
-    next_state_tmp = current_state - 10;
+    next_state_tmp = current_state - 1;
   }
   else{
     next_state_tmp = current_state;
   }
-//    SerialUSB.print("  ||  selected:");
-//    SerialUSB.println(next_state_tmp);
+    SerialUSB.print("\tnext_state_tmp:");
+    SerialUSB.println(next_state_tmp);
   return next_state_tmp;
 }
 
@@ -224,7 +218,6 @@ void setup()/////////////////////////////////////////////////////////////
      for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
         qtable[i][j] = W_INIT;
 
-      
   randomSeed(SEED); // initialize random number generator
 
   current_action = indexOfMax(qtable[current_state]);//choose action with the highest Q value
@@ -235,10 +228,10 @@ void setup()/////////////////////////////////////////////////////////////
 
 void loop()/////////////////////////////////////////////////////////////
 {
-  if(iteration < 100)
-    randomActionRate = 1.0;//for the 1st 100 iterations, always randomly search
-  else if(iteration < 200)
-    randomActionRate = 0.9;//for the next 100 iterations, mostly randomly search
+  if(iteration < 30)
+    randomActionRate = 1.0;//for the 1st 30 iterations, always randomly search
+  else if(iteration < 60)
+    randomActionRate = 0.9;//for the next 30 iterations, mostly randomly search
   
   float reward = get_reward(current_action);
 //  SerialUSB.print("reward:");
@@ -259,10 +252,26 @@ void loop()/////////////////////////////////////////////////////////////
   iteration++;
 }
 
+void moveMotors(int state)
+{
+  int elbowIndex = state%SERVO_NUM_STATES;
+  int shoulderIndex = (state - elbowIndex)/SERVO_NUM_STATES;
+  
+  SerialUSB.print("\n Move motors, state: ");
+  SerialUSB.print(state);
+  SerialUSB.print("\t elbowIdx: ");
+  SerialUSB.print(elbowIndex);
+  SerialUSB.print("\t shouldIdx: ");
+  SerialUSB.println(shoulderIndex);
+  
+  moveDxl(shoulderIndex,elbowIndex);
+}
+
 void moveDxl(int index1, int index2)//move joints to this position
 {
   int angle1 = dxlAngle(angles[index1]);
   int angle2 = dxlAngle(angles[index2]);
+  
   Dxl.setPosition(ID_SHOULDER, angle1, DX_SPEED); 
   Dxl.setPosition(ID_ELBOW,    angle2, DX_SPEED);
   
@@ -293,15 +302,12 @@ int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° 
 
 int indexOfMax(float maxArray[4])
 {
-  SerialUSB.print("indx:");
   int index = 0;
   for(int i = 1;i<4;i++)
   {
-    SerialUSB.print(" . ");
     if(maxArray[i] > maxArray[index])
     index = i;
   }
-  SerialUSB.print("\n");
   return index;
 }
 
@@ -315,13 +321,6 @@ float maxValue(float maxArray[4])
       maxVal = val;
   }
   return maxVal;
-}
-
-void moveMotors(int state)
-{
-  int elbowIndex = state%SERVO_NUM_STATES;
-  int shoulderIndex = (state - elbowIndex)/SERVO_NUM_STATES;
-  moveDxl(shoulderIndex,elbowIndex);
 }
 
 void readEncoder()//updates wheelRot, +ve values => moving forward
