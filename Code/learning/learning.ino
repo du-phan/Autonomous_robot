@@ -42,31 +42,35 @@ class AS5040
 Dynamixel Dxl(DXL_BUS_SERIAL1);  //dynamixel bus
 AS5040 encL (16, 17, 18); //encoder
 
-static int SEED = 38000;  //Grenoble rpz
-static float ALPHA = 0.5; // learning rate parameter
-static float BETA = 0.0;  // magnitude of noise added to choice
-static float GAMMA = 0.999; // discount factor
-static float RANDOM_ACTION_RATE = 0.5;
-static float RANDOM_ACTION_DECAY_RATE = .99;
+int SEED = 38000;  //Grenoble rpz
+float ALPHA = 0.7; // learning rate parameter
+float BETA = 0.0;  // magnitude of noise added to choice
+float GAMMA = 0.8; // discount factor
+float RANDOM_ACTION_RATE = .75;
+float RANDOM_ACTION_DECAY_RATE = 0.999;
 
-static float qtable[NUM_STATES][NUM_ACTIONS]; //  state-action values
+float qtable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 
-static int first_time = 1;
-static int current_action, next_action;
-static int current_state, next_state;
+int first_time = 1;
+int current_action, next_action;
+int current_state, next_state;
 
 int wheelRot = 0, prevWheelRot = 0;//position of the wheel
 int distanceTravelled = 0;
 
 void reset_controller()
 {
-   current_state = next_state = 24;
-   current_action = next_action = -1; // "null" action value
+   current_state = 24;
+   next_state = 24;
+   current_action = -1;
+   next_action = -1; // "null" action value
 }
 
 int get_action(float reward)
 {
-   if (first_time)
+   //SerialUSB.print("  ||  getA1cur:");
+   //SerialUSB.print(next_state);
+   /*if (first_time)
    {
       first_time = 0;
       reset_controller();   // set state and action to null values
@@ -81,8 +85,21 @@ int get_action(float reward)
       current_action = indexOfMax(qtable[current_state]) + 1;//choose action with the highest Q value
 
       return current_action;
+   }*/
+   
+   if (current_state == next_state) // when the robot choose a bad action
+   {
+      int proposed_action = current_action;
+      while (proposed_action == current_action)
+      {
+        proposed_action = random(4) + 1;
+      }
+      next_action = proposed_action;
+      current_action = next_action;
+      return current_action;
    }
-
+   //SerialUSB.print("  ||  getA2cur:");
+   //SerialUSB.print(next_state);
    float random_number = (1.0 * random(100)) / 100.0;
 
    bool choose_random_action = (1.0 - RANDOM_ACTION_RATE) <= random_number;
@@ -95,13 +112,28 @@ int get_action(float reward)
    {
      next_action = indexOfMax(qtable[next_state]) + 1;//choose action with the highest Q value
    }
+   //SerialUSB.print("  ||  getA3cur:");
+   //SerialUSB.print(next_state);
    
    RANDOM_ACTION_RATE *= RANDOM_ACTION_DECAY_RATE;
-   
+   SerialUSB.print("  ||  Random action rate:");
+   SerialUSB.print(RANDOM_ACTION_RATE);
+   SerialUSB.print("qtable cs");
+   SerialUSB.print(current_state);
+   SerialUSB.print("qtable ca");
+   SerialUSB.print(current_action);
+   SerialUSB.print("qtable ns");
+   SerialUSB.print(next_state);
+   SerialUSB.print("qtable na");
+   SerialUSB.print(next_action);
    qtable[current_state][current_action] = (1 - ALPHA) * qtable[current_state][current_action] + ALPHA * (reward + GAMMA * qtable[next_state][next_action]);
-
+   //SerialUSB.print("  ||  getA4cur:");
+   //SerialUSB.print(next_state);
    current_state = next_state;
    current_action = next_action;
+   
+   SerialUSB.print("  ||  getA5cur:");
+   SerialUSB.print(next_state);
 
    return current_action;
 }
@@ -110,7 +142,7 @@ float get_reward(int current_action)
 {
   float reward = 0;
   
-  if(abs(distanceTravelled) < 6)
+  if(abs(distanceTravelled) < 3)
   {
     distanceTravelled = 0;
   }
@@ -124,7 +156,7 @@ float get_reward(int current_action)
 int get_next_state(int current_action)
 {
   int next_state_tmp;
-    if ((current_action == 1) && !(current_state > 41)) // (+1,0) down
+    if ((current_action == 1) && !(current_state > (SERVO_NUM_STATES * (SERVO_NUM_STATES - 1) - 1 ))) // (+1,0) down
     {
       next_state_tmp = current_state + SERVO_NUM_STATES;
     }
@@ -138,11 +170,18 @@ int get_next_state(int current_action)
     }
     else if ((current_action == 4) && !((current_state%SERVO_NUM_STATES) == 0)) // (0,-1) left
     {
+      SerialUSB.print("  ||  cur4state:");
+      SerialUSB.print(current_state);
+      SerialUSB.print("  ||  cur4action:");
+      SerialUSB.print(current_action);
+
       next_state_tmp = current_state - 1;
     }
-    else
+    else{
       next_state_tmp = current_state;
-     
+    }
+    SerialUSB.print("  ||  selected:");
+    SerialUSB.println(next_state_tmp);
     return next_state_tmp;
 }
 
@@ -184,7 +223,19 @@ void setup()
 
   Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
   
-  current_action = get_action(0.0);// initialize the model
+  //current_action = get_action(0.0);// initialize the model
+
+      reset_controller();   // set state and action to null values
+
+      for (int i = 0; i < NUM_STATES; i++)
+         for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
+            qtable[i][j] = W_INIT;
+
+      
+      randomSeed(SEED); // initialize random number generator
+
+      current_action = indexOfMax(qtable[current_state]) + 1;//choose action with the highest Q value
+
   debugging();
   moveMotors(next_state);//move motors into position
   distanceTravelled = 0;//re-initialize reward stuff
@@ -202,6 +253,7 @@ void loop()
   //debugging();
   SerialUSB.print("  ||  next State:");
   SerialUSB.println(next_state);
+   
   moveMotors(next_state);//move motors into position
 }
 
