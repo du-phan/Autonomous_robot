@@ -10,7 +10,7 @@
 #define DX_SPEED 300
 #define PRESENT_POS 54  //address of position in dynamixels
 
-int angles[7] = {90, 60, 30, 0, -30, -60, -90};
+int angles[7] = {60, 40, 20, 0, -20, -40, -60};
 
 class AS5040
 {
@@ -56,10 +56,11 @@ static int current_action, next_action;
 static int current_state, next_state;
 
 int wheelRot = 0, prevWheelRot = 0;//position of the wheel
+int distanceTravelled = 0;
 
 void reset_controller()
 {
-   current_state = next_state = 0;
+   current_state = next_state = 24;
    current_action = next_action = -1; // "null" action value
 }
 
@@ -82,7 +83,7 @@ int get_action(float reward)
       return current_action;
    }
 
-   float random_number = random(100) / 100.0;
+   float random_number = (1.0 * random(100)) / 100.0;
 
    bool choose_random_action = (1.0 - RANDOM_ACTION_RATE) <= random_number;
 
@@ -94,7 +95,9 @@ int get_action(float reward)
    {
      next_action = indexOfMax(qtable[next_state]) + 1;//choose action with the highest Q value
    }
-
+   
+   RANDOM_ACTION_RATE *= RANDOM_ACTION_DECAY_RATE;
+   
    qtable[current_state][current_action] = (1 - ALPHA) * qtable[current_state][current_action] + ALPHA * (reward + GAMMA * qtable[next_state][next_action]);
 
    current_state = next_state;
@@ -105,38 +108,42 @@ int get_action(float reward)
 
 float get_reward(int current_action)
 {
-    return 0;
+  float reward = 0;
+  
+  if(abs(distanceTravelled) < 6)
+  {
+    distanceTravelled = 0;
+  }
+  
+  reward = distanceTravelled;//ignore small values? => robot shaking
+  distanceTravelled = 0;
+  
+  return reward;
 }
 
 int get_next_state(int current_action)
 {
-    int new_computed_state;
-
-    if (current_action == 1) // (+1,0)
+  int next_state_tmp;
+    if ((current_action == 1) && !(current_state > 41)) // (+1,0) down
     {
-      new_computed_state = current_state + SERVO_NUM_STATES;
+      next_state_tmp = current_state + SERVO_NUM_STATES;
     }
-    else if (current_action == 2) // (-1,0)
+    else if ((current_action == 2) && !(current_state < SERVO_NUM_STATES)) // (-1,0) up
     {
-      new_computed_state = current_state - SERVO_NUM_STATES;
+      next_state_tmp = current_state - SERVO_NUM_STATES;
     }
-    else if (current_action == 3) // (0,+1)
+    else if ((current_action == 3) && !((current_state%SERVO_NUM_STATES) == (SERVO_NUM_STATES - 1)))// (0,+1) right
     {
-      new_computed_state = current_state + 1;
+      next_state_tmp = current_state + 1;
     }
-    else // (0,-1)
+    else if ((current_action == 4) && !((current_state%SERVO_NUM_STATES) == 0)) // (0,-1) left
     {
-      new_computed_state = current_state - 1;
-    }
-
-    if ((new_computed_state < 0) || (new_computed_state >= NUM_STATES))
-    {
-      return current_state;
+      next_state_tmp = current_state - 1;
     }
     else
-    {
-      return new_computed_state;
-    }
+      next_state_tmp = current_state;
+     
+    return next_state_tmp;
 }
 
 void q_learning()
@@ -154,6 +161,7 @@ void q_learning()
 
 void setup()
 {
+  delay(500);
   SerialUSB.println("boop");
   // Initialize the dynamixel bus:
   // Dynamixel 2.0 Baudrate -> 0: 9600, 1: 57600, 2: 115200, 3: 1Mbps
@@ -163,15 +171,44 @@ void setup()
   encL.begin();//connect to encoder
 
   pinMode(BOARD_LED_PIN, OUTPUT);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);//flash quickly at start
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  digitalWrite(BOARD_LED_PIN, HIGH);delay(100);
+  digitalWrite(BOARD_LED_PIN, LOW);delay(100);
+  
   Dxl.goalPosition(1, dxlAngle(0));//ID 1 dynamixel moves to position 1023
 
   Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
+  
+  current_action = get_action(0.0);// initialize the model
+  debugging();
+  moveMotors(next_state);//move motors into position
+  distanceTravelled = 0;//re-initialize reward stuff
 }
 
 void loop()
 {
-  
-  delay(1000);
+  float reward = get_reward(current_action);
+  SerialUSB.print("reward:");
+  SerialUSB.print(reward);
+  next_state = get_next_state(current_action);
+  SerialUSB.print("  ||  current_action:");
+  SerialUSB.print(current_action);
+  current_action = get_action(reward);
+  //debugging();
+  SerialUSB.print("  ||  next State:");
+  SerialUSB.println(next_state);
+  moveMotors(next_state);//move motors into position
+}
+
+void debugging()
+{
+  SerialUSB.print("next State: ");
+  SerialUSB.println(next_state);
 }
 
 void moveDxl(int index1, int index2)//move joints to this position
@@ -180,13 +217,17 @@ void moveDxl(int index1, int index2)//move joints to this position
   int angle2 = dxlAngle(angles[index2]);
   Dxl.setPosition(ID_SHOULDER, angle1, DX_SPEED); 
   Dxl.setPosition(ID_ELBOW,    angle2, DX_SPEED);
- 
-  /*while(not there yet)
+  
+  int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
+  
+  while((abs(shoulderPos - angle1) > 50) || (abs(elbowPos - angle2) > 50))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
+    readEncoder();
     delay(10);
-  }*/
+  }
+  delay(500);
 }
 
 int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle
@@ -223,7 +264,7 @@ void moveMotors(int state)
 void readEncoder()//updates wheelRot, +ve values => moving forward
 {
   int currentWheelRot = encL.read();
-  wheelRot = currentWheelRot - prevWheelRot;
+  distanceTravelled += (currentWheelRot - prevWheelRot);
   prevWheelRot = currentWheelRot;
   if(wheelRot > 512)//corrects 1023 to 0 error
     wheelRot -= 1023;
