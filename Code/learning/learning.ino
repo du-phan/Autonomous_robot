@@ -79,7 +79,6 @@ int get_action(float reward)
          for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
             qtable[i][j] = W_INIT;
 
-      
       randomSeed(SEED); // initialize random number generator
 
       current_action = indexOfMax(qtable[current_state]) + 1;//choose action with the highest Q value
@@ -92,7 +91,7 @@ int get_action(float reward)
       int proposed_action = current_action;
       while (proposed_action == current_action)
       {
-        proposed_action = random(4) + 1;
+        proposed_action = random(4);
       }
       next_action = proposed_action;
       current_action = next_action;
@@ -106,11 +105,11 @@ int get_action(float reward)
 
    if (choose_random_action)
    {
-     next_action = random(4) + 1; //rand from 1~4
+     next_action = random(4); //rand from 0~3
    }
    else
    {
-     next_action = indexOfMax(qtable[next_state]) + 1;//choose action with the highest Q value
+     next_action = indexOfMax(qtable[next_state]);//choose action with the highest Q value
    }
    //SerialUSB.print("  ||  getA3cur:");
    //SerialUSB.print(next_state);
@@ -156,19 +155,19 @@ float get_reward(int current_action)
 int get_next_state(int current_action)
 {
   int next_state_tmp;
-    if ((current_action == 1) && !(current_state > (SERVO_NUM_STATES * (SERVO_NUM_STATES - 1) - 1 ))) // (+1,0) down
+    if ((current_action == 0) && !(current_state > (SERVO_NUM_STATES * (SERVO_NUM_STATES - 1) - 1 ))) // (+1,0) down
     {
       next_state_tmp = current_state + SERVO_NUM_STATES;
     }
-    else if ((current_action == 2) && !(current_state < SERVO_NUM_STATES)) // (-1,0) up
+    else if ((current_action == 1) && !(current_state < SERVO_NUM_STATES)) // (-1,0) up
     {
       next_state_tmp = current_state - SERVO_NUM_STATES;
     }
-    else if ((current_action == 3) && !((current_state%SERVO_NUM_STATES) == (SERVO_NUM_STATES - 1)))// (0,+1) right
+    else if ((current_action == 2) && !((current_state%SERVO_NUM_STATES) == (SERVO_NUM_STATES - 1)))// (0,+1) right
     {
       next_state_tmp = current_state + 1;
     }
-    else if ((current_action == 4) && !((current_state%SERVO_NUM_STATES) == 0)) // (0,-1) left
+    else if ((current_action == 3) && !((current_state%SERVO_NUM_STATES) == 0)) // (0,-1) left
     {
       SerialUSB.print("  ||  cur4state:");
       SerialUSB.print(current_state);
