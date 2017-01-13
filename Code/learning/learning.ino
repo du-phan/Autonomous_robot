@@ -228,6 +228,8 @@ void setup()/////////////////////////////////////////////////////////////
 
 void loop()/////////////////////////////////////////////////////////////
 {
+  //SerialUSB.println((int) Dxl.writeByte(ID_ELBOW, 40, 50));
+  //delay(1000);
   if(iteration < 30)
     randomActionRate = 1.0;//for the 1st 30 iterations, always randomly search
   else if(iteration < 60)
@@ -277,7 +279,7 @@ void moveDxl(int index1, int index2)//move joints to this position
   
   int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
   
-  while((abs(shoulderPos - angle1) > 50) || (abs(elbowPos - angle2) > 50))
+  while((abs(shoulderPos - angle1) > 20) || (abs(elbowPos - angle2) > 20))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
