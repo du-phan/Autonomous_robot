@@ -57,56 +57,56 @@ float randomActionRate = 1.00;//100% at start
 float qTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float tmpQTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float rTable[NUM_STATES][NUM_ACTIONS]; //  state-action rewards
-float fixedRTable[NUM_STATES][NUM_ACTIONS] = 
-{ -190 , -8888, -300 , -8888;
-  -328 , -8888, -440 , 510  ;
-  -275 , -8888, -270 , 360  ;
-  -250 , -8888, -90  , 240  ;
-  -92  , -8888, 0    , 65   ;
-  0    , -8888, 0    , 0    ;//5
-  0    , -8888, -8888, 0    ;
-  -400 , 310  , -480 , -8888;
-  -300 , 290  , -352 , 425  ;
-  -219 , 250  , -218 , 299  ;
-  -133 , 213  , -40  , 161  ;//10
-  0    , 30   , 0    , -30  ;
-  0    , 0    , 0    , 0    ;
-  0    , 0    , -8888, 0    ;
-  -205 , 250  , -380 , -8888;
-  -180 , 240  , -300 , -400 ;//15
-  -110 , 180  , -145 , 270  ;
-  -15  , 118  , 0    , 120  ;
-  0    , 5    , 0    , 10   ;
-  0    , 0    , 0    , 0    ;
-  0    , 0    , -8888, 0    ;//20
-  -145 , 180  , -355 , -8888;
-  -92  , 158  , -260 , 345  ;
-  -5   , 100  , -40  , 210  ;
-  0    , 5    , 0    , 12   ;
-  0    , 0    , 0    , 0    ;//25
-  0    , 0    , 0    , 0    ;
-  0    , 0    , -8888, 0    ;
-  -40  , 90   , -250 , -8888;
-  0    , 42   , -160 , 250  ;
-  0    , 10   , 0    , 135  ;//30
-  0    , 0    , 0    , 5    ;
-  0    , 0    , 0    , 0    ;
-  0    , 0    , 0    , 0    ;
-  0    , 0    , -8888, 0    ;
-  0    , 35   , -185 , -8888;//35
-  0    , 0    , -195 , 205  ;
-  0    , 0    , -5   , 192  ;
-  -0   , -0   , -0   , 5    ;
-  0    , 0    , 0    , 0    ;
-  0    , 0    , 0    , 0    ;//40
-  0    , 0    , -8888, 0    ;
-  -8888, 0    , -260 , -8888;
-  -8888, 0    , -185 , 250  ;
-  -8888, 0    , -5   , 195  ;
-  -8888, 0    , 0    , 10   ;//45
-  -8888, 0    , 0    , 0    ;
-  -8888, 0    , 0    , 0    ;
-  -8888, 0    , -8888, 0     //48
+float fixedRTable[NUM_STATES][NUM_ACTIONS] = {
+{ -190 , -8888, -300 , -8888},{
+  -328 , -8888, -440 , 510  },{
+  -275 , -8888, -270 , 360  },{
+  -250 , -8888, -90  , 240  },{
+  -92  , -8888, 0    , 65   },{
+  0    , -8888, 0    , 0    },{//5
+  0    , -8888, -8888, 0    },{
+  -400 , 310  , -480 , -8888},{
+  -300 , 290  , -352 , 425  },{
+  -219 , 250  , -218 , 299  },{
+  -133 , 213  , -40  , 161  },{//10
+  0    , 30   , 0    , -30  },{
+  0    , 0    , 0    , 0    },{
+  0    , 0    , -8888, 0    },{
+  -205 , 250  , -380 , -8888},{
+  -180 , 240  , -300 , -400 },{//15
+  -110 , 180  , -145 , 270  },{
+  -15  , 118  , 0    , 120  },{
+  0    , 5    , 0    , 10   },{
+  0    , 0    , 0    , 0    },{
+  0    , 0    , -8888, 0    },{//20
+  -145 , 180  , -355 , -8888},{
+  -92  , 158  , -260 , 345  },{
+  -5   , 100  , -40  , 210  },{
+  0    , 5    , 0    , 12   },{
+  0    , 0    , 0    , 0    },{//25
+  0    , 0    , 0    , 0    },{
+  0    , 0    , -8888, 0    },{
+  -40  , 90   , -250 , -8888},{
+  0    , 42   , -160 , 250  },{
+  0    , 10   , 0    , 135  },{//30
+  0    , 0    , 0    , 5    },{
+  0    , 0    , 0    , 0    },{
+  0    , 0    , 0    , 0    },{
+  0    , 0    , -8888, 0    },{
+  0    , 35   , -185 , -8888},{//35
+  0    , 0    , -195 , 205  },{
+  0    , 0    , -5   , 192  },{
+  -0   , -0   , -0   , 5    },{
+  0    , 0    , 0    , 0    },{
+  0    , 0    , 0    , 0    },{//40
+  0    , 0    , -8888, 0    },{
+  -8888, 0    , -260 , -8888},{
+  -8888, 0    , -185 , 250  },{
+  -8888, 0    , -5   , 195  },{
+  -8888, 0    , 0    , 10   },{//45
+  -8888, 0    , 0    , 0    },{
+  -8888, 0    , 0    , 0    },{
+  -8888, 0    , -8888, 0    }//48
   }; //  state-action rewards
 
 int first_time = 1;
@@ -425,6 +425,7 @@ void setup()/////////////////////////////////////////////////////////////
 
 void loop()/////////////////////////////////////////////////////////////
 {
+  /*
   readEncoder();
   delay(10);
   if(uartFlag)
@@ -462,9 +463,12 @@ void loop()/////////////////////////////////////////////////////////////
       SerialUSB.print("dist: ");
       SerialUSB.println(distanceTravelled);
     }
-  }
-  /*if(iteration < 50)
+  }*/
+  if(iteration < 50)
     randomActionRate = 1.0;//for the 1st 30 iterations, always randomly search
+  else if(iteration < 100)
+    randomActionRate = 0.95;//for the 1st 30 iterations, always randomly search
+    
   if(randomActionRate < 0.15)
   {
     randomActionRate = 0;//stop searching,###later: add a test to see if we actually move, if not, set rand back to 1.0
@@ -480,26 +484,24 @@ void loop()/////////////////////////////////////////////////////////////
   
   update_action();//done -- choose next action to take based on current state and Q Table
   update_next_state();//done
-  moveMotors(next_state);//done -- move motors into position
+  //moveMotors(next_state);//done -- move motors into position
   
   updateR();//done -- update reward gotten from movement
   updateQ();//done -- update Q table based on rewards
   
 //  SerialUSB.print("reward:");
 //  SerialUSB.print(reward);
-//  SerialUSB.print("i: ");
-//  SerialUSB.print(iteration);
-//  SerialUSB.print("\tcurrent state: ");
-//  SerialUSB.print(next_state);
-//  SerialUSB.print("\tnext state: ");
-//  SerialUSB.print(next_state);
-//  SerialUSB.print("\trand rate: ");
-//  SerialUSB.println(randomActionRate);
-//  SerialUSB.print("\tnext State:");
-//  SerialUSB.println(next_state);
+  SerialUSB.print("i: ");
+  SerialUSB.print(iteration);
+  SerialUSB.print("\tcurrent state: ");
+  SerialUSB.print(current_state);
+  SerialUSB.print("\trand rate: ");
+  SerialUSB.print(randomActionRate);
+  SerialUSB.print("\tnext State:");
+  SerialUSB.println(next_state);
   
   current_state = next_state;
-  iteration++;*/
+  iteration++;
 }
 
 void usbInterrupt(byte* buffer, byte nCount)
