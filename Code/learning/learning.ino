@@ -389,14 +389,10 @@ void loop()/////////////////////////////////////////////////////////////
     }
     else if(myCommand == 1)
     {
-      SerialUSB.println("Boop!");
       current_state = myI;
       current_action = myJ;
-      SerialUSB.println("Boop!");
       update_next_state();//ok
-      SerialUSB.println("Boop!");
       moveMotors(next_state);//ok
-      SerialUSB.println("Boop!");
     }
     else if(myCommand == 2)
     {
@@ -469,7 +465,10 @@ void usbInterrupt(byte* buffer, byte nCount)
   else
   {
     uartFlag = false;
-    SerialUSB.println("Boop!");
+    SerialUSB.print("myI: ");
+    SerialUSB.print(myI);
+    SerialUSB.print("\tmyJ");
+    SerialUSB.println(myJ);
   }
 }
 
