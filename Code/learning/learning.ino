@@ -7,14 +7,14 @@
 #define ID_ELBOW 2
 #define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
 #define SERVO_NUM_STATES 7
-#define DX_SPEED 50
+#define DX_SPEED 350
 #define PRESENT_POS 54  //address of position in dynamixels
 #define RANDOM_ACTION_DECAY_RATE 0.996;
 
 int angles[7] = {75, 50, 25, 0, -25, -50, -75};
 //int angles[7] = {60, 0, -60};
 
-int myI = 0, myJ = 0;
+int myI = 25, myJ = 0;
 int myCommand = 0;
 bool uartFlag = false;
 
@@ -57,6 +57,57 @@ float randomActionRate = 1.00;//100% at start
 float qTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float tmpQTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float rTable[NUM_STATES][NUM_ACTIONS]; //  state-action rewards
+float fixedRTable[NUM_STATES][NUM_ACTIONS] = 
+{ -190 , -8888, -300 , -8888;
+  -328 , -8888, -440 , 510  ;
+  -275 , -8888, -270 , 360  ;
+  -250 , -8888, -90  , 240  ;
+  -92  , -8888, 0    , 65   ;
+  0    , -8888, 0    , 0    ;//5
+  0    , -8888, -8888, 0    ;
+  -400 , 310  , -480 , -8888;
+  -300 , 290  , -352 , 425  ;
+  -219 , 250  , -218 , 299  ;
+  -133 , 213  , -40  , 161  ;//10
+  0    , 30   , 0    , -30  ;
+  0    , 0    , 0    , 0    ;
+  0    , 0    , -8888, 0    ;
+  -205 , 250  , -380 , -8888;
+  -180 , 240  , -300 , -400 ;//15
+  -110 , 180  , -145 , 270  ;
+  -15  , 118  , 0    , 120  ;
+  0    , 5    , 0    , 10   ;
+  0    , 0    , 0    , 0    ;
+  0    , 0    , -8888, 0    ;//20
+  -145 , 180  , -355 , -8888;
+  -92  , 158  , -260 , 345  ;
+  -5   , 100  , -40  , 210  ;
+  0    , 5    , 0    , 12   ;
+  0    , 0    , 0    , 0    ;//25
+  0    , 0    , 0    , 0    ;
+  0    , 0    , -8888, 0    ;
+  -40  , 90   , -250 , -8888;
+  0    , 42   , -160 , 250  ;
+  0    , 10   , 0    , 135  ;//30
+  0    , 0    , 0    , 5    ;
+  0    , 0    , 0    , 0    ;
+  0    , 0    , 0    , 0    ;
+  0    , 0    , -8888, 0    ;
+  0    , 35   , -185 , -8888;//35
+  0    , 0    , -195 , 205  ;
+  0    , 0    , -5   , 192  ;
+  -0   , -0   , -0   , 5    ;
+  0    , 0    , 0    , 0    ;
+  0    , 0    , 0    , 0    ;//40
+  0    , 0    , -8888, 0    ;
+  -8888, 0    , -260 , -8888;
+  -8888, 0    , -185 , 250  ;
+  -8888, 0    , -5   , 195  ;
+  -8888, 0    , 0    , 10   ;//45
+  -8888, 0    , 0    , 0    ;
+  -8888, 0    , 0    , 0    ;
+  -8888, 0    , -8888, 0     //48
+  }; //  state-action rewards
 
 int first_time = 1;
 int current_action, next_action;
@@ -160,17 +211,17 @@ void moveDxl(int index1, int index2)//move joints to this position
 {
   int angle1 = dxlAngle(angles[index1]);
   int angle2 = dxlAngle(angles[index2]);
-  SerialUSB.print("angle1:");
-  SerialUSB.print(angles[index1]);
-  SerialUSB.print("\tangle2:");
-  SerialUSB.println(angles[index2]);
+//  SerialUSB.print("angle1:");
+//  SerialUSB.print(angles[index1]);
+//  SerialUSB.print("\tangle2:");
+//  SerialUSB.println(angles[index2]);
   
   Dxl.setPosition(ID_SHOULDER, angle1, DX_SPEED); 
   Dxl.setPosition(ID_ELBOW,    angle2, DX_SPEED);
   
   int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
   
-  while((abs(shoulderPos - angle1) > 40) || (abs(elbowPos - angle2) > 40))
+  while((abs(shoulderPos - angle1) > 45) || (abs(elbowPos - angle2) > 45))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
@@ -244,7 +295,7 @@ void updateR()
   else if((current_state == 1) && (current_action == 3))
     reward = -100.0;*/
   
-  rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * reward;
+  rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * fixedRTable[current_state][current_action];
 }
 
 
@@ -378,6 +429,7 @@ void loop()/////////////////////////////////////////////////////////////
   delay(10);
   if(uartFlag)
   {
+    SerialUSB.print(".");
     uartFlag = false;
     if(myCommand == 0)
     {
@@ -386,17 +438,29 @@ void loop()/////////////////////////////////////////////////////////////
       {
         myJ = 0; myI++;
       }
+      
+      SerialUSB.print("new myI: ");
+      SerialUSB.print(myI);
+      SerialUSB.print("\t,myJ: ");
+      SerialUSB.println(myJ);
     }
     else if(myCommand == 1)
     {
       current_state = myI;
       current_action = myJ;
       update_next_state();//ok
+      SerialUSB.print("m_");
       moveMotors(next_state);//ok
+      SerialUSB.println("moved");
     }
-    else if(myCommand == 2)
+    else if(myCommand == 2)//reset
     {
+      SerialUSB.print("m_");
       moveMotors(myI);
+      SerialUSB.println("moved");
+      distanceTravelled = 0;//clear
+      SerialUSB.print("dist: ");
+      SerialUSB.println(distanceTravelled);
     }
   }
   /*if(iteration < 50)
@@ -457,17 +521,16 @@ void usbInterrupt(byte* buffer, byte nCount)
     myCommand = 2;
   else if(((char)buffer[0]) == 'v')//read
   {
-    SerialUSB.print("distanceTravelled: ");
+    SerialUSB.print("d: ");
     SerialUSB.println(distanceTravelled);
+    uartFlag = false;
   }
-  else if(((char)buffer[0]) == 'c')//clear
-    distanceTravelled = 0;//clear
   else
   {
     uartFlag = false;
-    SerialUSB.print("myI: ");
+    SerialUSB.print("I: ");
     SerialUSB.print(myI);
-    SerialUSB.print("\tmyJ");
+    SerialUSB.print("\tJ: ");
     SerialUSB.println(myJ);
   }
 }
