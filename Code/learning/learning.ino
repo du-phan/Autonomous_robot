@@ -9,12 +9,12 @@
 #define SERVO_NUM_STATES 7
 #define DX_SPEED 350
 #define PRESENT_POS 54  //address of position in dynamixels
-#define RANDOM_ACTION_DECAY_RATE 0.996;
+#define RANDOM_ACTION_DECAY_RATE 0.999;
 
 int angles[7] = {75, 50, 25, 0, -25, -50, -75};
 //int angles[7] = {60, 0, -60};
 
-int myI = 25, myJ = 0;
+int myI = 0, myJ = 0;
 int myCommand = 0;
 bool uartFlag = false;
 
@@ -284,9 +284,9 @@ void readEncoder()//updates wheelRot, +ve values => moving forward
 void updateR()
 {
   float reward = -10.0;
-  if(distanceTravelled < -100)//if you go back a lot
-    distanceTravelled *= 1.5;//50% extra penalty
-  
+  distanceTravelled = fixedRTable[current_state][current_action];
+  if(distanceTravelled < -50)//if you go back a lot
+    distanceTravelled *= 2;//50% extra penalty
   reward += distanceTravelled;
   
   distanceTravelled = 0;//re-initialize distanceTravelled
@@ -295,7 +295,7 @@ void updateR()
   else if((current_state == 1) && (current_action == 3))
     reward = -100.0;*/
   
-  rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * fixedRTable[current_state][current_action];
+  rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * reward;
 }
 
 
@@ -464,9 +464,9 @@ void loop()/////////////////////////////////////////////////////////////
       SerialUSB.println(distanceTravelled);
     }
   }*/
-  if(iteration < 50)
+  if(iteration < 2000)
     randomActionRate = 1.0;//for the 1st 30 iterations, always randomly search
-  else if(iteration < 100)
+  else if(iteration < 4000)
     randomActionRate = 0.95;//for the 1st 30 iterations, always randomly search
     
   if(randomActionRate < 0.15)
@@ -474,7 +474,7 @@ void loop()/////////////////////////////////////////////////////////////
     randomActionRate = 0;//stop searching,###later: add a test to see if we actually move, if not, set rand back to 1.0
     digitalWrite(BOARD_LED_PIN, LOW);//led on
   }
-  while(iteration > 580)
+  while(randomActionRate < 0.1)
   {
     digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
     digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
@@ -493,11 +493,11 @@ void loop()/////////////////////////////////////////////////////////////
 //  SerialUSB.print(reward);
   SerialUSB.print("i: ");
   SerialUSB.print(iteration);
-  SerialUSB.print("\tcurrent state: ");
+  SerialUSB.print("\tcs: ");
   SerialUSB.print(current_state);
-  SerialUSB.print("\trand rate: ");
+  SerialUSB.print("\trr: ");
   SerialUSB.print(randomActionRate);
-  SerialUSB.print("\tnext State:");
+  SerialUSB.print("\tns:");
   SerialUSB.println(next_state);
   
   current_state = next_state;
