@@ -7,12 +7,16 @@
 #define ID_ELBOW 2
 #define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
 #define SERVO_NUM_STATES 7
-#define DX_SPEED 200
+#define DX_SPEED 50
 #define PRESENT_POS 54  //address of position in dynamixels
 #define RANDOM_ACTION_DECAY_RATE 0.996;
 
 int angles[7] = {75, 50, 25, 0, -25, -50, -75};
 //int angles[7] = {60, 0, -60};
+
+int myI = 0, myJ = 0;
+int myCommand = 0;
+bool uartFlag = false;
 
 class AS5040
 {
@@ -51,7 +55,8 @@ float GAMMA = 0.5; // discount factor
 float randomActionRate = 1.00;//100% at start
 
 float qTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
-int rTable[NUM_STATES][NUM_ACTIONS]; //  state-action rewards
+float tmpQTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
+float rTable[NUM_STATES][NUM_ACTIONS]; //  state-action rewards
 
 int first_time = 1;
 int current_action, next_action;
@@ -155,20 +160,24 @@ void moveDxl(int index1, int index2)//move joints to this position
 {
   int angle1 = dxlAngle(angles[index1]);
   int angle2 = dxlAngle(angles[index2]);
+  SerialUSB.print("angle1:");
+  SerialUSB.print(angles[index1]);
+  SerialUSB.print("\tangle2:");
+  SerialUSB.println(angles[index2]);
   
   Dxl.setPosition(ID_SHOULDER, angle1, DX_SPEED); 
   Dxl.setPosition(ID_ELBOW,    angle2, DX_SPEED);
   
   int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
   
-  while((abs(shoulderPos - angle1) > 50) || (abs(elbowPos - angle2) > 50))
+  while((abs(shoulderPos - angle1) > 40) || (abs(elbowPos - angle2) > 40))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
     delay(10);
     readEncoder();
   }
-  delay(200);
+  delay(150);
   readEncoder();//read encoder one last time after motors have reached their final positions
 }
 
@@ -223,7 +232,10 @@ void readEncoder()//updates wheelRot, +ve values => moving forward
 
 void updateR()
 {
-  float reward = -1.0;
+  float reward = -10.0;
+  if(distanceTravelled < -100)//if you go back a lot
+    distanceTravelled *= 1.5;//50% extra penalty
+  
   reward += distanceTravelled;
   
   distanceTravelled = 0;//re-initialize distanceTravelled
@@ -244,25 +256,31 @@ void updateQ()
     {
       if ((j == 0) && !(i > (SERVO_NUM_STATES * (SERVO_NUM_STATES - 1) - 1 ))) // (+1,0) down
       {
-        qTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i + SERVO_NUM_STATES]);
+        tmpQTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i + SERVO_NUM_STATES]);
       }
       else if ((j == 1) && !(i < SERVO_NUM_STATES)) // (-1,0) up
       {
-        qTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i - SERVO_NUM_STATES]);
+        tmpQTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i - SERVO_NUM_STATES]);
       }
       else if ((j == 2) && !((i%SERVO_NUM_STATES) == (SERVO_NUM_STATES - 1)))// (0,+1) right
       {
-        qTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i + 1]);
+        tmpQTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i + 1]);
       }
       else if ((j == 3) && !((i%SERVO_NUM_STATES) == 0)) // (0,-1) left
       {
-        qTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i - 1]);
+        tmpQTable[i][j] = rTable[i][j] + GAMMA * maxValue(qTable[i - 1]);
       }
       else//edge case, do nothing
       {
-        qTable[i][j] = -888;// edge case
+        tmpQTable[i][j] = -8888;// edge case
       }
     }
+  }
+  
+  for (int i = 0; i < NUM_STATES; i++)
+  {
+    for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
+      qTable[i][j] = tmpQTable[i][j];
   }
 }
 
@@ -280,7 +298,7 @@ void printQ()
       SerialUSB.print("    \t");
       SerialUSB.print(j);
       SerialUSB.print(":");
-      if(abs(qTable[i][j] + 888.0) < 0.1)
+      if(abs(qTable[i][j] + 8888.0) < 0.1)
         SerialUSB.print("    ");
       else
         SerialUSB.print(qTable[i][j]);
@@ -315,9 +333,18 @@ void setup()/////////////////////////////////////////////////////////////
   // Initialize the dynamixel bus:
   // Dynamixel 2.0 Baudrate -> 0: 9600, 1: 57600, 2: 115200, 3: 1Mbps
   Dxl.begin(3);
-  Dxl.jointMode(1); //jointMode() is to use position mode
-  Dxl.jointMode(2); //jointMode() is to use position mode
+  Dxl.jointMode(ID_SHOULDER); //jointMode() is to use position mode
+  Dxl.jointMode(ID_ELBOW); //jointMode() is to use position mode
   encL.begin();     //connect to encoder
+  
+  /*Dxl.writeByte(1, 26, 5);//P
+  Dxl.writeByte(2, 26, 5);//P
+  Dxl.writeByte(1, 27, 3);//I
+  Dxl.writeByte(2, 27, 3);//I
+  Dxl.writeByte(1, 28, 8);//compliance slope
+  Dxl.writeByte(1, 29, 8);//compliance slope
+  Dxl.writeByte(2, 28, 8);//compliance slope
+  Dxl.writeByte(2, 29, 8);//compliance slope*/
 
   pinMode(BOARD_LED_PIN, OUTPUT);
   digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//flash quickly at start
@@ -329,8 +356,8 @@ void setup()/////////////////////////////////////////////////////////////
   digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
   digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
   
-  Dxl.goalPosition(1, dxlAngle(0));//ID 1 dynamixel moves to position 1023
-  Dxl.goalPosition(2, dxlAngle(0));//ID 1 dynamixel moves to position 1023
+  Dxl.goalPosition(ID_SHOULDER, dxlAngle(0));//ID 1 dynamixel moves to position 1023
+  Dxl.goalPosition(ID_ELBOW, dxlAngle(0));//ID 1 dynamixel moves to position 1023
   
   initialize_stuff();   // set state and action to null values
 
@@ -347,8 +374,36 @@ void setup()/////////////////////////////////////////////////////////////
 
 void loop()/////////////////////////////////////////////////////////////
 {
-//  printQ();
-  if(iteration < 50)
+  readEncoder();
+  delay(10);
+  if(uartFlag)
+  {
+    uartFlag = false;
+    if(myCommand == 0)
+    {
+      myJ++;
+      if(myJ == 4)
+      {
+        myJ = 0; myI++;
+      }
+    }
+    else if(myCommand == 1)
+    {
+      SerialUSB.println("Boop!");
+      current_state = myI;
+      current_action = myJ;
+      SerialUSB.println("Boop!");
+      update_next_state();//ok
+      SerialUSB.println("Boop!");
+      moveMotors(next_state);//ok
+      SerialUSB.println("Boop!");
+    }
+    else if(myCommand == 2)
+    {
+      moveMotors(myI);
+    }
+  }
+  /*if(iteration < 50)
     randomActionRate = 1.0;//for the 1st 30 iterations, always randomly search
   if(randomActionRate < 0.15)
   {
@@ -384,18 +439,38 @@ void loop()/////////////////////////////////////////////////////////////
 //  SerialUSB.println(next_state);
   
   current_state = next_state;
-  iteration++;
+  iteration++;*/
 }
 
 void usbInterrupt(byte* buffer, byte nCount)
 {
-  if((((char)buffer[0]) == 'q') || (((char)buffer[0]) == 'Q'))
+  uartFlag = true;
+  if(((char)buffer[0]) == 'q')
     printQ();
-  else if((((char)buffer[0]) == 'r') || (((char)buffer[0]) == 'R'))
+  else if(((char)buffer[0]) == 'r')
     printR();
+  else if(((char)buffer[0]) == 'i')
+    SerialUSB.println(iteration);
+  else if(((char)buffer[0]) == 's')
+    SerialUSB.println(current_state);
+  else if(((char)buffer[0]) == ' ')
+    myCommand = 0;
+  else if(((char)buffer[0]) == 'x')//go
+    myCommand = 1;
+  else if(((char)buffer[0]) == 'z')//reset
+    myCommand = 2;
+  else if(((char)buffer[0]) == 'v')//read
+  {
+    SerialUSB.print("distanceTravelled: ");
+    SerialUSB.println(distanceTravelled);
+  }
+  else if(((char)buffer[0]) == 'c')//clear
+    distanceTravelled = 0;//clear
   else
   {
-    SerialUSB.print("state: ");
-    SerialUSB.print(current_state);
+    uartFlag = false;
+    SerialUSB.println("Boop!");
   }
 }
+
+
