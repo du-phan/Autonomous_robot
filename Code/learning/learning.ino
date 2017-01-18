@@ -285,8 +285,8 @@ void updateR()
 {
   float reward = -10.0;
   distanceTravelled = fixedRTable[current_state][current_action];
-  if(distanceTravelled < -50)//if you go back a lot
-    distanceTravelled *= 2;//50% extra penalty
+//  if(distanceTravelled < -50)//if you go back a lot
+//    distanceTravelled *= 2;//50% extra penalty
   reward += distanceTravelled;
   
   distanceTravelled = 0;//re-initialize distanceTravelled
@@ -474,7 +474,7 @@ void loop()/////////////////////////////////////////////////////////////
     randomActionRate = 0;//stop searching,###later: add a test to see if we actually move, if not, set rand back to 1.0
     digitalWrite(BOARD_LED_PIN, LOW);//led on
   }
-  while(randomActionRate < 0.1)
+  while(iteration > 6000)//stop
   {
     digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
     digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
@@ -493,10 +493,10 @@ void loop()/////////////////////////////////////////////////////////////
 //  SerialUSB.print(reward);
   SerialUSB.print("i: ");
   SerialUSB.print(iteration);
-  SerialUSB.print("\tcs: ");
-  SerialUSB.print(current_state);
-  SerialUSB.print("\trr: ");
-  SerialUSB.print(randomActionRate);
+//  SerialUSB.print("\tcs: ");
+//  SerialUSB.print(current_state);
+//  SerialUSB.print("\trr: ");
+//  SerialUSB.print(randomActionRate);
   SerialUSB.print("\tns:");
   SerialUSB.println(next_state);
   
