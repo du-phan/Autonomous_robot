@@ -225,11 +225,16 @@ void moveDxl(int index1, int index2)//move joints to this position
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
-    delay(10);
+    delay(5);
     readEncoder();
   }
-  delay(150);
-  readEncoder();//read encoder one last time after motors have reached their final positions
+  float averageWheelRot = 10;
+  while(averageWheelRot > 1.0)
+  {
+    averageWheelRot = 0.8 * averageWheelRot + 0.2 * wheelRot;
+    delay(5);
+    readEncoder();//read encoder one last time after motors have reached their final positions
+  }
 }
 
 int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle
