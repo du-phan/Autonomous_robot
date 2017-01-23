@@ -7,7 +7,7 @@
 #define ID_ELBOW 2
 #define DXL_POSITIONS_PER_DEGREE 1024.0/300.0
 #define SERVO_NUM_STATES 7
-#define DX_SPEED 350
+#define DX_SPEED 100
 #define PRESENT_POS 54  //address of position in dynamixels
 #define RANDOM_ACTION_DECAY_RATE 0.999;
 
@@ -225,11 +225,16 @@ void moveDxl(int index1, int index2)//move joints to this position
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
-    delay(10);
+    delay(5);
     readEncoder();
   }
-  delay(150);
-  readEncoder();//read encoder one last time after motors have reached their final positions
+  float averageWheelRot = 10;
+  while(averageWheelRot > 1.0)
+  {
+    averageWheelRot = 0.8 * averageWheelRot + 0.2 * wheelRot;
+    delay(5);
+    readEncoder();//read encoder one last time after motors have reached their final positions
+  }
 }
 
 int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle
@@ -283,7 +288,7 @@ void readEncoder()//updates wheelRot, +ve values => moving forward
 
 void updateR()
 {
-  float reward = -10.0;
+  float reward = 0.0;
   distanceTravelled = fixedRTable[current_state][current_action];
 //  if(distanceTravelled < -50)//if you go back a lot
 //    distanceTravelled *= 2;//50% extra penalty
@@ -301,6 +306,7 @@ void updateR()
 
 void updateQ()
 {
+  //calculate values
   for (int i = 0; i < NUM_STATES; i++)
   {
     for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
@@ -328,6 +334,7 @@ void updateQ()
     }
   }
   
+  //copy table
   for (int i = 0; i < NUM_STATES; i++)
   {
     for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
@@ -464,7 +471,17 @@ void loop()/////////////////////////////////////////////////////////////
       SerialUSB.println(distanceTravelled);
     }
   }*/
-  if(iteration < 2000)
+  moveMotors(3); delay(100);//3 4 5 12 19 18 17 16 9 10
+  moveMotors(4); delay(100);
+  moveMotors(5); delay(100);
+  moveMotors(12);delay(100);
+  moveMotors(19);delay(100);
+  moveMotors(18);delay(100);
+  moveMotors(17);delay(100);
+  moveMotors(16);delay(100);
+  moveMotors(9); delay(100);
+  moveMotors(10);delay(100);
+/*  if(iteration < 2000)
     randomActionRate = 1.0;//for the 1st 30 iterations, always randomly search
   else if(iteration < 4000)
     randomActionRate = 0.95;//for the 1st 30 iterations, always randomly search
@@ -478,6 +495,9 @@ void loop()/////////////////////////////////////////////////////////////
   {
     digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
     digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
+    updateQ();//done -- update Q table based on rewards
+    printQ();
+    SerialUSB.println("\n-------------------------------------------");
   }
   
   randomActionRate *= RANDOM_ACTION_DECAY_RATE;
@@ -501,7 +521,7 @@ void loop()/////////////////////////////////////////////////////////////
   SerialUSB.println(next_state);
   
   current_state = next_state;
-  iteration++;
+  iteration++;*/
 }
 
 void usbInterrupt(byte* buffer, byte nCount)
