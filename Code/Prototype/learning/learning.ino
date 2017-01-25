@@ -9,7 +9,7 @@
 #define SERVO_NUM_STATES 7
 #define DX_SPEED 150
 #define PRESENT_POS 37  //address of position in dynamixels
-#define RANDOM_ACTION_DECAY_RATE 0.999;
+#define RANDOM_ACTION_DECAY_RATE 0.996; //~500 cycles to 20%
 
 int angles[7] = {75, 50, 25, 0, -25, -50, -75};
 //int angles[7] = {60, 0, -60};
@@ -49,64 +49,64 @@ Dynamixel Dxl(DXL_BUS_SERIAL1);  //dynamixel bus
 AS5040 encL (16, 17, 18); //encoder
 
 int SEED = 38000;  //Grenoble rpz
-float ALPHA = 0.8; // learning rate parameter
+float ALPHA = 0.7680484211161775; // learning rate parameter
 float BETA = 0.5;  // magnitude of noise added to choice
-float GAMMA = 0.95; // discount factor
-float randomActionRate = 1.00;//100% at start
+float GAMMA = 0.982;// discount factor
+float randomActionRate = 1.0;//20% at start
 
 float qTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float tmpQTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float rTable[NUM_STATES][NUM_ACTIONS]; //  state-action rewards
 float fixedRTable[NUM_STATES][NUM_ACTIONS] = {
-{ -250 , -8888, -405 , -8888},{//0
-  -309 , -8888, -400 , 405  },{
-  -262 , -8888, -255 , 400  },{
-  -231 , -8888, -77  , 255  },{//3
-  -61  , -8888, 0    , 77   },{
-  0    , -8888, 0    , 0    },{//5
-  0    , -8888, -8888, 0    },{
-  -325 , 250  , -452 , -8888},{//7
+{ -250 , -15000, -405 , -15000},{//0
+  -309 , -15000, -400 , 405  },{
+  -262 , -15000, -255 , 400  },{
+  -231 , -15000, -77  , 255  },{//3
+  -61  , -15000, 0    , 77   },{
+  0    , -15000, 0    , 0    },{//5
+  0    , -15000, -15000, 0    },{
+  -325 , 250  , -452 , -15000},{//7
   -270 , 309  , -325 , 452  },{
   -200 , 262  , -190 , 325  },{
   -125 , 231  , -10  , 190  },{//10
   -2   , 61   , 0    , 10   },{
   0    , 0    , 0    , 0    },{//12
-  0    , 0    , -8888, 0    },{
-  -192 , 325  , -390 , -8888},{//14
+  0    , 0    , -15000, 0    },{
+  -192 , 325  , -390 , -15000},{//14
   -169 , 270  , -285 , -390 },{
   -105 , 200  , -132 , 285  },{
   -10  , 125  , -5   , 132  },{//17
   0    , 2    , 0    , 5    },{
   0    , 0    , 0    , 0    },{//19
-  0    , 0    , -8888, 0    },{
-  -117 , 192  , -350 , -8888},{//21
+  0    , 0    , -15000, 0    },{
+  -117 , 192  , -350 , -15000},{//21
   -67  , 169  , -235 , 350  },{
   -8   , 105  , -26  , 235  },{
   0    , 10   , 0    , 26   },{//24
   0    , 0    , 0    , 0    },{
   0    , 0    , 0    , 0    },{
-  0    , 0    , -8888, 0    },{
-  -38  , 117  , -250 , -8888},{//28
+  0    , 0    , -15000, 0    },{
+  -38  , 117  , -250 , -15000},{//28
   0    , 67   , -148 , 250  },{
   0    , 8    , -3   , 148  },{//30
   0    , 0    , 0    , 3    },{
   0    , 0    , 0    , 0    },{//32
   0    , 0    , 0    , 0    },{
-  0    , 0    , -8888, 0    },{
-  0    , 38   , -195 , -8888},{//35
+  0    , 0    , -15000, 0    },{
+  0    , 38   , -195 , -15000},{//35
   0    , 0    , -193 , 195  },{
   0    , 0    , -5   , 193  },{//37
   0    , 0    , 0    , 5    },{
   0    , 0    , 0    , 0    },{
   0    , 0    , 0    , 0    },{//40
-  0    , 0    , -8888, 0    },{
-  -8888, 0    , -255 , -8888},{//42
-  -8888, 0    , -190 , 255  },{
-  -8888, 0    , -8   , 190  },{
-  -8888, 0    , 0    , 8   },{//45
-  -8888, 0    , 0    , 0    },{
-  -8888, 0    , 0    , 0    },{
-  -8888, 0    , -8888, 0    }//48
+  0    , 0    , -15000, 0    },{
+  -15000, 0    , -255 , -15000},{//42
+  -15000, 0    , -190 , 255  },{
+  -15000, 0    , -8   , 190  },{
+  -15000, 0    , 0    , 8   },{//45
+  -15000, 0    , 0    , 0    },{
+  -15000, 0    , 0    , 0    },{
+  -15000, 0    , -15000, 0    }//48
   }; //  state-action rewards
 
 int first_time = 1;
@@ -126,7 +126,7 @@ void initialize_stuff()
           qTable[i][j] = W_INIT;
           rTable[i][j] = 0;
         }
-  current_state = NUM_STATES/2;
+  current_state = 10;//NUM_STATES/2;
   next_state = NUM_STATES/2;
   current_action = -1;//"null value"
   randomSeed(SEED); // initialize random number generator
@@ -221,14 +221,16 @@ void moveDxl(int index1, int index2)//move joints to this position
   
   int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
   
-  while((abs(shoulderPos - angle1) > 12) || (abs(elbowPos - angle2) > 12))
+  while((abs(shoulderPos - angle1) > 25) || (abs(elbowPos - angle2) > 25))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
     delay(5);
     readEncoder();
-    SerialUSB.println("pos: ");
-    SerialUSB.println(elbowPos);
+    SerialUSB.print("Err S: ");
+    SerialUSB.print(shoulderPos - angle1);
+    SerialUSB.print("\tErr E: ");
+    SerialUSB.println(elbowPos - angle2);
   }
   
   float averageWheelRot = wheelRot;
@@ -293,19 +295,22 @@ void readEncoder()//updates wheelRot, +ve values => moving forward
 
 void updateR()
 {
-  float reward = 0.0;
-  distanceTravelled = fixedRTable[current_state][current_action];
-//  if(distanceTravelled < -50)//if you go back a lot
-//    distanceTravelled *= 2;//50% extra penalty
-  reward += distanceTravelled;
+  float reward = -50.0;
   
+  if(distanceTravelled > 50)
+    reward = 1.0;
+  else if(distanceTravelled < 50)
+    reward = -1.0;
+  else
+    reward = 0;
+//  reward += distanceTravelled;
+//  distanceTravelled = fixedRTable[current_state][current_action];
   distanceTravelled = 0;//re-initialize distanceTravelled
-  /*if((current_state == 0) && (current_action == 2))
-    reward = 100.0;
-  else if((current_state == 1) && (current_action == 3))
-    reward = -100.0;*/
   
-  rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * reward;
+//  if(rTable[current_state][current_action] == 0)
+//    rTable[current_state][current_action] = reward;
+//  else
+    rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * reward;
 }
 
 
@@ -334,7 +339,7 @@ void updateQ()
       }
       else//edge case, do nothing
       {
-        tmpQTable[i][j] = -8888;// edge case
+        tmpQTable[i][j] = -15000;// edge case
       }
     }
   }
@@ -343,7 +348,7 @@ void updateQ()
   for (int i = 0; i < NUM_STATES; i++)
   {
     for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
-      qTable[i][j] = tmpQTable[i][j];
+      qTable[i][j] = (1-ALPHA) * qTable[i][j] + ALPHA * tmpQTable[i][j];
   }
 }
 
@@ -361,7 +366,7 @@ void printQ()
       SerialUSB.print("    \t");
       SerialUSB.print(j);
       SerialUSB.print(":");
-      if(abs(qTable[i][j] + 8888.0) < 0.1)
+      if(abs(qTable[i][j] + 15000.0) < 0.1)
         SerialUSB.print("    ");
       else
         SerialUSB.print(qTable[i][j]);
@@ -385,6 +390,33 @@ void printR()
       SerialUSB.print(rTable[i][j]);
     }
   }
+/*long err = 0;
+  for (int i = 0; i < NUM_STATES; i++)
+  {
+//    SerialUSB.print("\ni: ");
+//    SerialUSB.print(i);
+    for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
+    {
+//      SerialUSB.print("  \t");
+//      SerialUSB.print(j);
+//      SerialUSB.print(":");
+      if(fixedRTable[i][j] == -15000)
+//        SerialUSB.print("   ");
+;
+      else
+        {
+//          SerialUSB.print((int)rTable[i][j] - fixedRTable[i][j] + 50);
+          err += abs(rTable[i][j] - fixedRTable[i][j] + 50);
+        }
+    }
+  }
+  
+      SerialUSB.print("\n\nERROR: ");
+      SerialUSB.println(err);
+      SerialUSB.print("\n\nERROR: ");
+      SerialUSB.println(err);
+      SerialUSB.print("\n\nERROR: ");
+      SerialUSB.println(err);*/
 }
 
 
@@ -400,14 +432,14 @@ void setup()/////////////////////////////////////////////////////////////
   Dxl.jointMode(ID_ELBOW); //jointMode() is to use position mode
   encL.begin();     //connect to encoder
   
-  Dxl.writeByte(1, 29, 25);//P
-  Dxl.writeByte(2, 29, 25);//P
+  Dxl.writeByte(1, 29, 28);//P
+  Dxl.writeByte(2, 29, 28);//P
   Dxl.writeByte(1, 28, 8);//I
   Dxl.writeByte(2, 28, 8);//I
   Dxl.writeByte(1, 27, 6);//D
   Dxl.writeByte(2, 27, 6);//D
-  Dxl.writeWord(1, 32, 150);//Speed
-  Dxl.writeWord(2, 32, 150);//Speed
+  Dxl.writeWord(1, 32, 200);//Speed
+  Dxl.writeWord(2, 32, 200);//Speed
   
 
   pinMode(BOARD_LED_PIN, OUTPUT);
@@ -477,30 +509,88 @@ void loop()/////////////////////////////////////////////////////////////
       SerialUSB.println(distanceTravelled);
     }
   }*/
-/*  if(iteration < 2000)
-    randomActionRate = 1.0;//for the 1st 30 iterations, always randomly search
-  else if(iteration < 4000)
-    randomActionRate = 0.95;//for the 1st 30 iterations, always randomly search
+  
+//  if((iteration % 100) == 0)
+//    printR();
     
-  if(randomActionRate < 0.15)
+  /*if(iteration == 100)
+  {
+    for (int i = 0; i < NUM_STATES; i++)
+    {
+      for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
+        qTable[i][j] = 1.1130568801499376 * qTable[i][j];
+    }
+  }*/
+  
+  if(iteration < 100)
+    randomActionRate = 0.95;//for the 1st 80 iterations, mainly randomly search
+  
+  if(randomActionRate < 0.5)
   {
     randomActionRate = 0;//stop searching,###later: add a test to see if we actually move, if not, set rand back to 1.0
     digitalWrite(BOARD_LED_PIN, LOW);//led on
   }
-  while(iteration > 6000)//stop
+  while(iteration > 1000)//stop
   {
     digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
     digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
     updateQ();//done -- update Q table based on rewards
-    printQ();
-    SerialUSB.println("\n-------------------------------------------");
+//    printQ();
+//    SerialUSB.println("\n-------------------------------------------");
+
+    if(myCommand == 888)
+    {
+      while(1)
+      {
+        randomActionRate *= RANDOM_ACTION_DECAY_RATE;
+        
+        update_action();//done -- choose next action to take based on current state and Q Table
+        update_next_state();//done
+        
+        updateQ();//done -- update Q table based on rewards
+        current_state = next_state;
+        iteration++;
+        
+        SerialUSB.print("loop: ");
+        SerialUSB.print(iteration);
+        
+        SerialUSB.print("\trr: ");
+        SerialUSB.print(randomActionRate);
+        SerialUSB.print("\tns:");
+        SerialUSB.println(next_state);
+      }
+    }
+  }
+  
+  
+  if(myCommand == 888)
+  {
+    while(1)
+    {
+      randomActionRate *= RANDOM_ACTION_DECAY_RATE;
+      
+      update_action();//done -- choose next action to take based on current state and Q Table
+      update_next_state();//done
+      
+      updateQ();//done -- update Q table based on rewards
+      current_state = next_state;
+      iteration++;
+      
+      SerialUSB.print("loop: ");
+      SerialUSB.print(iteration);
+      
+      SerialUSB.print("\trr: ");
+      SerialUSB.print(randomActionRate);
+      SerialUSB.print("\tns:");
+      SerialUSB.println(next_state);
+    }
   }
   
   randomActionRate *= RANDOM_ACTION_DECAY_RATE;
   
   update_action();//done -- choose next action to take based on current state and Q Table
   update_next_state();//done
-  //moveMotors(next_state);//done -- move motors into position
+  moveMotors(next_state);//done -- move motors into position
   
   updateR();//done -- update reward gotten from movement
   updateQ();//done -- update Q table based on rewards
@@ -511,13 +601,13 @@ void loop()/////////////////////////////////////////////////////////////
   SerialUSB.print(iteration);
 //  SerialUSB.print("\tcs: ");
 //  SerialUSB.print(current_state);
-//  SerialUSB.print("\trr: ");
-//  SerialUSB.print(randomActionRate);
+  SerialUSB.print("\trr: ");
+  SerialUSB.print(randomActionRate);
   SerialUSB.print("\tns:");
   SerialUSB.println(next_state);
   
   current_state = next_state;
-  iteration++;*/
+  iteration++;
 }
 
 void usbInterrupt(byte* buffer, byte nCount)
@@ -531,6 +621,8 @@ void usbInterrupt(byte* buffer, byte nCount)
     SerialUSB.println(iteration);
   else if(((char)buffer[0]) == 's')
     SerialUSB.println(current_state);
+  else if(((char)buffer[0]) == 'l')
+    myCommand = 888;
   else if(((char)buffer[0]) == ' ')
     myCommand = 0;
   else if(((char)buffer[0]) == 'x')//go
