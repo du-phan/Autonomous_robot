@@ -9,9 +9,9 @@
 #define SERVO_NUM_STATES 7
 #define DX_SPEED 150
 #define PRESENT_POS 37  //address of position in dynamixels
-#define RANDOM_ACTION_DECAY_RATE 0.996; //~500 cycles to 20%
+#define RANDOM_ACTION_DECAY_RATE 0.998; //~500 cycles to 20%
 
-int angles[7] = {75, 50, 25, 0, -25, -50, -75};
+int angles[7] = {60, 40, 20, 0, -20, -40, -60};
 //int angles[7] = {60, 0, -60};
 
 int myI = 0, myJ = 0;
@@ -124,7 +124,10 @@ void initialize_stuff()
      for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
         {
           qTable[i][j] = W_INIT;
-          rTable[i][j] = 0;
+          if(actionIsAllowed(i,j))
+            rTable[i][j] = 0;
+          else
+            rTable[i][j] = -15000;
         }
   current_state = 10;//NUM_STATES/2;
   next_state = NUM_STATES/2;
@@ -211,21 +214,23 @@ void moveDxl(int index1, int index2)//move joints to this position
 {
   int angle1 = dxlAngle(angles[index1]);
   int angle2 = dxlAngle(angles[index2]);
-//  SerialUSB.print("angle1:");
-//  SerialUSB.print(angles[index1]);
-//  SerialUSB.print("\tangle2:");
-//  SerialUSB.println(angles[index2]);
+  SerialUSB.print("angle1:");
+  SerialUSB.print(angles[index1]);
+  SerialUSB.print("\tangle2:");
+  SerialUSB.println(angles[index2]);
   
   Dxl.goalPosition(ID_SHOULDER, angle1); 
   Dxl.goalPosition(ID_ELBOW,    angle2);
   
   int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
   
-  while((abs(shoulderPos - angle1) > 25) || (abs(elbowPos - angle2) > 25))
+  while((abs(shoulderPos - angle1) > 30) || (abs(elbowPos - angle2) > 30))
   {
     shoulderPos = Dxl.readWord(ID_SHOULDER, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ID_ELBOW, PRESENT_POS); // Read present position
     delay(5);
+    Dxl.goalPosition(ID_SHOULDER, angle1);//re-write to be sure the motor gets the correct value
+    Dxl.goalPosition(ID_ELBOW,    angle2);//re-write to be sure the motor gets the correct value
     readEncoder();
     SerialUSB.print("Err S: ");
     SerialUSB.print(shoulderPos - angle1);
@@ -297,14 +302,16 @@ void updateR()
 {
   float reward = -50.0;
   
-  if(distanceTravelled > 50)
+ /* if(distanceTravelled > 50)
     reward = 1.0;
   else if(distanceTravelled < 50)
     reward = -1.0;
   else
-    reward = 0;
-//  reward += distanceTravelled;
-//  distanceTravelled = fixedRTable[current_state][current_action];
+    reward = 0;*/
+    
+  //distanceTravelled = fixedRTable[current_state][current_action];
+  
+  reward += distanceTravelled;
   distanceTravelled = 0;//re-initialize distanceTravelled
   
 //  if(rTable[current_state][current_action] == 0)
@@ -377,19 +384,19 @@ void printQ()
 void printR()
 {
   SerialUSB.print("\nn:");
-  SerialUSB.print(iteration);
+  SerialUSB.println(iteration);
+  SerialUSB.print("{ ");
   for (int i = 0; i < NUM_STATES; i++)
   {
-    SerialUSB.print("\ni: ");
-    SerialUSB.print(i);
-    for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
+    for (int j = 0; j < (NUM_ACTIONS-1); j++) // num_actions
     {
-      SerialUSB.print("  \t");
-      SerialUSB.print(j);
-      SerialUSB.print(":");
       SerialUSB.print(rTable[i][j]);
+      SerialUSB.print(", ");
     }
+    SerialUSB.print(rTable[i][NUM_ACTIONS-1]);//last one
+    SerialUSB.println("},{");
   }
+  SerialUSB.println("___________________");
 /*long err = 0;
   for (int i = 0; i < NUM_STATES; i++)
   {
@@ -494,9 +501,9 @@ void loop()/////////////////////////////////////////////////////////////
     {
       current_state = myI;
       current_action = myJ;
-      update_next_state();//ok
+      update_next_state();
       SerialUSB.print("m_");
-      moveMotors(next_state);//ok
+      moveMotors(next_state);
       SerialUSB.println("moved");
     }
     else if(myCommand == 2)//reset
@@ -521,22 +528,21 @@ void loop()/////////////////////////////////////////////////////////////
         qTable[i][j] = 1.1130568801499376 * qTable[i][j];
     }
   }*/
-  
-  if(iteration < 100)
+    
+  randomActionRate *= RANDOM_ACTION_DECAY_RATE;
+  if(iteration < 200)
     randomActionRate = 0.95;//for the 1st 80 iterations, mainly randomly search
   
-  if(randomActionRate < 0.5)
+  if(randomActionRate < 0.05)
   {
     randomActionRate = 0;//stop searching,###later: add a test to see if we actually move, if not, set rand back to 1.0
     digitalWrite(BOARD_LED_PIN, LOW);//led on
   }
-  while(iteration > 1000)//stop
+  while(iteration > 2000)//stop
   {
     digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
     digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
     updateQ();//done -- update Q table based on rewards
-//    printQ();
-//    SerialUSB.println("\n-------------------------------------------");
 
     if(myCommand == 888)
     {
@@ -553,7 +559,6 @@ void loop()/////////////////////////////////////////////////////////////
         
         SerialUSB.print("loop: ");
         SerialUSB.print(iteration);
-        
         SerialUSB.print("\trr: ");
         SerialUSB.print(randomActionRate);
         SerialUSB.print("\tns:");
@@ -561,7 +566,6 @@ void loop()/////////////////////////////////////////////////////////////
       }
     }
   }
-  
   
   if(myCommand == 888)
   {
@@ -578,7 +582,6 @@ void loop()/////////////////////////////////////////////////////////////
       
       SerialUSB.print("loop: ");
       SerialUSB.print(iteration);
-      
       SerialUSB.print("\trr: ");
       SerialUSB.print(randomActionRate);
       SerialUSB.print("\tns:");
@@ -591,16 +594,13 @@ void loop()/////////////////////////////////////////////////////////////
   update_action();//done -- choose next action to take based on current state and Q Table
   update_next_state();//done
   moveMotors(next_state);//done -- move motors into position
+//  moveMotors(48);//done -- move motors into position
   
   updateR();//done -- update reward gotten from movement
   updateQ();//done -- update Q table based on rewards
   
-//  SerialUSB.print("reward:");
-//  SerialUSB.print(reward);
   SerialUSB.print("i: ");
   SerialUSB.print(iteration);
-//  SerialUSB.print("\tcs: ");
-//  SerialUSB.print(current_state);
   SerialUSB.print("\trr: ");
   SerialUSB.print(randomActionRate);
   SerialUSB.print("\tns:");
