@@ -13,11 +13,13 @@
 #define PRESENT_POS 37  //address of position in dynamixels
 #define RANDOM_ACTION_DECAY_RATE 0.998; //~500 cycles to 20%
 
+Dynamixel Dxl(DXL_BUS_SERIAL1);  //dynamixel bus
 
 int angles[7] = {60, 40, 20, 0, -20, -40, -60};
 //int angles[7] = {60, 0, -60};
 int SEED = 38000;  //Grenoble rpz
 int a = 3, b = 3, c = 3, d = 3;
+int iteration = 0;
 
 void setup()
 {
@@ -54,10 +56,11 @@ void setup()
 
 void loop()
 {//all random motions
-  SerialUSB.println(random(1));
-  if(random(1))//50%50
+  SerialUSB.print("boop: ");
+  SerialUSB.println((int)random(2));
+  if(random(2))//50%50
   {
-    if(random(1) && (a < 6))//50%50
+    if(random(2) && (a < 6))//50%50
       a++;
     else if(a > 0)
       a--;
@@ -66,7 +69,7 @@ void loop()
   }
   else
   {
-    if(random(1) && (b < 6))//50%50
+    if(random(2) && (b < 6))//50%50
       b++;
     else if(b > 0)
       b--;
@@ -74,9 +77,9 @@ void loop()
       b++;
   }
   
-  if(random(1))//50%50
+  if(random(2))//50%50
   {
-    if(random(1) && (c < 6))//50%50
+    if(random(2) && (c < 6))//50%50
       c++;
     else if(c > 0)
       c--;
@@ -85,7 +88,7 @@ void loop()
   }
   else
   {
-    if(random(1) && (d < 6))//50%50
+    if(random(2) && (d < 6))//50%50
       d++;
     else if(d > 0)
       d--;
@@ -110,12 +113,17 @@ void loop()
 
 void moveDxl(int armNum, int index1, int index2)//move joints to this position
 {
+  int ids = 0, ide = 0;
   if(armNum == 1)
+  {
     ids = ID_SHOULDER1;
     ide = ID_ELBOW1;
+  }
   else
+  {
     ids = ID_SHOULDER2;
     ide = ID_ELBOW2;
+  }
   
   int angle1 = dxlAngle(angles[index1]);
   int angle2 = dxlAngle(angles[index2]);
@@ -129,29 +137,20 @@ void moveDxl(int armNum, int index1, int index2)//move joints to this position
   
   int shoulderPos = 2000, elbowPos = 2000;//make sure first test in while loop is true
   
-  while((abs(shoulderPos - angle1) > 30) || (abs(elbowPos - angle2) > 30))
+  while((abs(shoulderPos - angle1) > 40) || (abs(elbowPos - angle2) > 40))
   {
     shoulderPos = Dxl.readWord(ids, PRESENT_POS); // Read present position
     elbowPos = Dxl.readWord(ide, PRESENT_POS); // Read present position
     delay(5);
     Dxl.goalPosition(ids, angle1);//re-write to be sure the motor gets the correct value
-    Dxl.goalPosition(ide,    angle2);//re-write to be sure the motor gets the correct value
-    readEncoder();
+    Dxl.goalPosition(ide, angle2);//re-write to be sure the motor gets the correct value
+    
     SerialUSB.print("Err S: ");
     SerialUSB.print(shoulderPos - angle1);
     SerialUSB.print("\tErr E: ");
     SerialUSB.println(elbowPos - angle2);
   }
-  
-  float averageWheelRot = wheelRot;
-  while(averageWheelRot > 1.0)
-  {
-    averageWheelRot = 0.8 * averageWheelRot + 0.2 * wheelRot;
-    SerialUSB.println("avg: ");
-    SerialUSB.println(averageWheelRot);
-    delay(5);
-    readEncoder();//read encoder one last time after motors have reached their final positions
-  }
+  delay(100);
 }
 
 int dxlAngle(float angleDEG)//returns the 0-1023 value needed to get this -90° ~ 90° angle

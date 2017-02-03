@@ -9,10 +9,11 @@
 #define SERVO_NUM_STATES 7
 #define DX_SPEED 150
 #define PRESENT_POS 37  //address of position in dynamixels
-#define RANDOM_ACTION_DECAY_RATE 0.998; //~500 cycles to 20%
+#define RANDOM_ACTION_DECAY_RATE 0.996; //~500 cycles to 20%
 
-int angles[7] = {60, 40, 20, 0, -20, -40, -60};
-//int angles[7] = {60, 0, -60};
+int angles[7] = {75, 50, 25, 0, -25, -50, -75};
+//int angles[3] = {60, 0, -60};
+//int angles[4] = {60, 20, -20, -60};
 
 int myI = 0, myJ = 0;
 int myCommand = 0;
@@ -48,15 +49,66 @@ Dynamixel Dxl(DXL_BUS_SERIAL1);  //dynamixel bus
 AS5040 encL (16, 17, 18); //encoder
 
 int SEED = 38000;  //Grenoble rpz
-float ALPHA = 0.7680484211161775; // learning rate parameter
+float ALPHA = 0.75; // learning rate parameter
 float BETA = 0.5;  // magnitude of noise added to choice
-float GAMMA = 0.982;// discount factor
+float GAMMA = 0.98;// discount factor
 float randomActionRate = 1.0;//20% at start
 
 float qTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float tmpQTable[NUM_STATES][NUM_ACTIONS]; //  state-action values
 float rTable[NUM_STATES][NUM_ACTIONS]; //  state-action rewards
-float fixedRTable[NUM_STATES][NUM_ACTIONS] = {
+/*float fixedRTable[NUM_STATES][NUM_ACTIONS] = {
+  { -53.58, -15000.00, -55.69, -15000.00},{
+-102.71, -15000.00, -137.24, -56.00},{
+-249.45, -15000.00, -104.81, -10.52},{
+-150.65, -15000.00, -155.06, -48.03},{
+-115.50, -15000.00, -94.09, -17.50},{
+-49.36, -15000.00, -49.75, -38.50},{
+-49.67, -15000.00, -15000.00, -48.41},{
+-75.93, -72.54, -120.48, -15000.00},{
+-206.81, -61.68, -262.62, 16.87},{
+-97.01, 11.50, -186.00, 42.44},{
+-116.87, -38.70, -138.12, -8.69},{
+-49.06, -24.00, -48.47, -52.44},{
+-49.67, -49.06, -50.39, -49.42},{
+-49.45, -49.32, -15000.00, -49.31},{
+-123.69, -32.73, -197.13, -15000.00},{
+-98.63, 14.13, -181.94, 12.65},{
+-122.91, -26.89, -164.83, -1.38},{
+-51.13, -44.75, -52.00, -18.09},{
+-49.11, -48.88, -49.42, -48.28},{
+-49.70, -48.47, -50.41, -49.27},{
+-49.84, -49.38, -15000.00, -48.63},{
+-120.19, -6.80, -176.50, -15000.00},{
+-108.56, -24.17, -126.37, 11.30},{
+-83.50, -29.94, -87.25, -14.00},{
+-48.81, -47.50, -48.86, -39.50},{
+-49.19, -49.00, -49.05, -50.14},{
+-49.17, -48.25, -49.05, -48.63},{
+-49.61, -48.97, -15000.00, -48.97},{
+-52.05, -18.50, -129.87, -15000.00},{
+-54.25, -41.54, -105.03, -36.00},{
+-65.04, -44.84, -57.06, -7.37},{
+-49.00, -50.03, -49.38, -51.47},{
+-49.05, -49.84, -49.20, -48.97},{
+-49.78, -49.38, -48.56, -48.64},{
+-49.09, -48.56, -15000.00, -49.34},{
+-69.99, -44.00, -102.22, -15000.00},{
+-63.31, -52.21, -127.84, -43.69},{
+-61.25, -53.63, -79.23, -5.94},{
+-50.50, -49.98, -49.70, -47.63},{
+-50.23, -48.84, -49.49, -49.23},{
+-49.61, -48.44, -49.41, -49.21},{
+-50.20, -49.38, -15000.00, -48.93},{
+-15000.00, -53.22, -49.67, -15000.00},{
+-15000.00, -49.71, -78.61, -61.50},{
+-15000.00, -57.63, -72.00, -18.89},{
+-15000.00, -48.41, -49.52, -49.28},{
+-15000.00, -48.78, -48.67, -49.22},{
+-15000.00, -49.72, -49.03, -50.09},{
+-15000.00, -48.73, -15000.00, -49.25}
+*/
+/*
 { -250 , -15000, -405 , -15000},{//0
   -309 , -15000, -400 , 405  },{
   -262 , -15000, -255 , 400  },{
@@ -106,7 +158,7 @@ float fixedRTable[NUM_STATES][NUM_ACTIONS] = {
   -15000, 0    , 0    , 0    },{
   -15000, 0    , 0    , 0    },{
   -15000, 0    , -15000, 0    }//48
-  }; //  state-action rewards
+  }; //  state-action rewards*/
 
 int first_time = 1;
 int current_action, next_action;
@@ -237,14 +289,14 @@ void moveDxl(int index1, int index2)//move joints to this position
     SerialUSB.println(elbowPos - angle2);
   }
   
-  float averageWheelRot = wheelRot;
+  float averageWheelRot = 2*wheelRot;
   while(averageWheelRot > 1.0)
   {
+    delay(50);
+    readEncoder();//read encoder one last time after motors have reached their final positions
     averageWheelRot = 0.8 * averageWheelRot + 0.2 * wheelRot;
     SerialUSB.println("avg: ");
     SerialUSB.println(averageWheelRot);
-    delay(5);
-    readEncoder();//read encoder one last time after motors have reached their final positions
   }
 }
 
@@ -301,7 +353,7 @@ void updateR()
 {
   float reward = -50.0;
   
-  //distanceTravelled = fixedRTable[current_state][current_action];//for simulation
+//  distanceTravelled = fixedRTable[current_state][current_action];//for simulation
   
   reward += distanceTravelled;
   distanceTravelled = 0;//re-initialize distanceTravelled
@@ -438,7 +490,7 @@ void setup()/////////////////////////////////////////////////////////////
 
 void loop()/////////////////////////////////////////////////////////////
 {
-  randomActionRate *= RANDOM_ACTION_DECAY_RATE;
+  randomActionRate -= 0.001;// *= RANDOM_ACTION_DECAY_RATE;
   if(iteration < 200)//keep random rate high at start
     randomActionRate = 0.95;//for the 1st 80 iterations, mainly randomly search
   
@@ -448,11 +500,11 @@ void loop()/////////////////////////////////////////////////////////////
     digitalWrite(BOARD_LED_PIN, LOW);//led on
   }
   
-  while(iteration > 2000)//stop
+  while(iteration > 1500)//stop
   {
     digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
     digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
-    updateQ();//done -- update Q table based on rewards
+    updateQ();//update Q table based on rewards
 
     if(myCommand == 888)//simulate the robot moving
     {
@@ -460,10 +512,10 @@ void loop()/////////////////////////////////////////////////////////////
       {
         randomActionRate *= RANDOM_ACTION_DECAY_RATE;
         
-        update_action();//done -- choose next action to take based on current state and Q Table
+        update_action();//choose next action to take based on current state and Q Table
         update_next_state();//done
         
-        updateQ();//done -- update Q table based on rewards
+        updateQ();//update Q table based on rewards
         current_state = next_state;
         iteration++;
         
@@ -499,7 +551,17 @@ void loop()/////////////////////////////////////////////////////////////
     }
   }
   
-  randomActionRate *= RANDOM_ACTION_DECAY_RATE;
+//  moveMotors(24);
+//  moveMotors(17);
+//  moveMotors(10);
+//  moveMotors(3);
+//  moveMotors(4);
+//  moveMotors(5);
+//  moveMotors(12);
+//  moveMotors(19);
+//  moveMotors(26);
+//  moveMotors(25);
+  
   
   update_action();//done -- choose next action to take based on current state and Q Table
   update_next_state();//done
