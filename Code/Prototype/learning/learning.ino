@@ -16,7 +16,6 @@ int angles[7] = {60, 40, 20, 0, -20, -40, -60};
 
 int myI = 0, myJ = 0;
 int myCommand = 0;
-bool uartFlag = false;
 
 class AS5040
 {
@@ -302,22 +301,12 @@ void updateR()
 {
   float reward = -50.0;
   
- /* if(distanceTravelled > 50)
-    reward = 1.0;
-  else if(distanceTravelled < 50)
-    reward = -1.0;
-  else
-    reward = 0;*/
-    
-  //distanceTravelled = fixedRTable[current_state][current_action];
+  //distanceTravelled = fixedRTable[current_state][current_action];//for simulation
   
   reward += distanceTravelled;
   distanceTravelled = 0;//re-initialize distanceTravelled
   
-//  if(rTable[current_state][current_action] == 0)
-//    rTable[current_state][current_action] = reward;
-//  else
-    rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * reward;
+  rTable[current_state][current_action] = (1.0 - BETA) * rTable[current_state][current_action] + BETA * reward;
 }
 
 
@@ -360,7 +349,7 @@ void updateQ()
 }
 
 
-void printQ()
+void printQ()//print Q table
 {
   SerialUSB.print("\nn:");
   SerialUSB.print(iteration);
@@ -381,7 +370,7 @@ void printQ()
   }
 }
 
-void printR()
+void printR()//print R table
 {
   SerialUSB.print("\nn:");
   SerialUSB.println(iteration);
@@ -397,33 +386,6 @@ void printR()
     SerialUSB.println("},{");
   }
   SerialUSB.println("___________________");
-/*long err = 0;
-  for (int i = 0; i < NUM_STATES; i++)
-  {
-//    SerialUSB.print("\ni: ");
-//    SerialUSB.print(i);
-    for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
-    {
-//      SerialUSB.print("  \t");
-//      SerialUSB.print(j);
-//      SerialUSB.print(":");
-      if(fixedRTable[i][j] == -15000)
-//        SerialUSB.print("   ");
-;
-      else
-        {
-//          SerialUSB.print((int)rTable[i][j] - fixedRTable[i][j] + 50);
-          err += abs(rTable[i][j] - fixedRTable[i][j] + 50);
-        }
-    }
-  }
-  
-      SerialUSB.print("\n\nERROR: ");
-      SerialUSB.println(err);
-      SerialUSB.print("\n\nERROR: ");
-      SerialUSB.println(err);
-      SerialUSB.print("\n\nERROR: ");
-      SerialUSB.println(err);*/
 }
 
 
@@ -439,12 +401,12 @@ void setup()/////////////////////////////////////////////////////////////
   Dxl.jointMode(ID_ELBOW); //jointMode() is to use position mode
   encL.begin();     //connect to encoder
   
-  Dxl.writeByte(1, 29, 28);//P
-  Dxl.writeByte(2, 29, 28);//P
-  Dxl.writeByte(1, 28, 8);//I
-  Dxl.writeByte(2, 28, 8);//I
-  Dxl.writeByte(1, 27, 6);//D
-  Dxl.writeByte(2, 27, 6);//D
+  Dxl.writeByte(1, 29, 28); //P
+  Dxl.writeByte(2, 29, 28); //P
+  Dxl.writeByte(1, 28, 8);  //I
+  Dxl.writeByte(2, 28, 8);  //I
+  Dxl.writeByte(1, 27, 6);  //D
+  Dxl.writeByte(2, 27, 6);  //D
   Dxl.writeWord(1, 32, 200);//Speed
   Dxl.writeWord(2, 32, 200);//Speed
   
@@ -471,66 +433,13 @@ void setup()/////////////////////////////////////////////////////////////
   initialize_stuff();
   current_action = 0;
 
-  //moveMotors(next_state);//move motors into position
   distanceTravelled = 0;//re-initialize distanceTravelled
 }
 
 void loop()/////////////////////////////////////////////////////////////
 {
-  /*
-  readEncoder();
-  delay(10);
-  if(uartFlag)
-  {
-    SerialUSB.print(".");
-    uartFlag = false;
-    if(myCommand == 0)
-    {
-      myJ++;
-      if(myJ == 4)
-      {
-        myJ = 0; myI++;
-      }
-      
-      SerialUSB.print("new myI: ");
-      SerialUSB.print(myI);
-      SerialUSB.print("\t,myJ: ");
-      SerialUSB.println(myJ);
-    }
-    else if(myCommand == 1)
-    {
-      current_state = myI;
-      current_action = myJ;
-      update_next_state();
-      SerialUSB.print("m_");
-      moveMotors(next_state);
-      SerialUSB.println("moved");
-    }
-    else if(myCommand == 2)//reset
-    {
-      SerialUSB.print("m_");
-      moveMotors(myI);
-      SerialUSB.println("moved");
-      distanceTravelled = 0;//clear
-      SerialUSB.print("dist: ");
-      SerialUSB.println(distanceTravelled);
-    }
-  }*/
-  
-//  if((iteration % 100) == 0)
-//    printR();
-    
-  /*if(iteration == 100)
-  {
-    for (int i = 0; i < NUM_STATES; i++)
-    {
-      for (int j = 0; j < NUM_ACTIONS; j++) // num_actions
-        qTable[i][j] = 1.1130568801499376 * qTable[i][j];
-    }
-  }*/
-    
   randomActionRate *= RANDOM_ACTION_DECAY_RATE;
-  if(iteration < 200)
+  if(iteration < 200)//keep random rate high at start
     randomActionRate = 0.95;//for the 1st 80 iterations, mainly randomly search
   
   if(randomActionRate < 0.05)
@@ -538,13 +447,14 @@ void loop()/////////////////////////////////////////////////////////////
     randomActionRate = 0;//stop searching,###later: add a test to see if we actually move, if not, set rand back to 1.0
     digitalWrite(BOARD_LED_PIN, LOW);//led on
   }
+  
   while(iteration > 2000)//stop
   {
     digitalWrite(BOARD_LED_PIN, LOW);  delay(100);//on
     digitalWrite(BOARD_LED_PIN, HIGH); delay(100);//off
     updateQ();//done -- update Q table based on rewards
 
-    if(myCommand == 888)
+    if(myCommand == 888)//simulate the robot moving
     {
       while(1)
       {
@@ -567,7 +477,7 @@ void loop()/////////////////////////////////////////////////////////////
     }
   }
   
-  if(myCommand == 888)
+  if(myCommand == 888)//simulate the robot moving
   {
     while(1)
     {
@@ -594,7 +504,6 @@ void loop()/////////////////////////////////////////////////////////////
   update_action();//done -- choose next action to take based on current state and Q Table
   update_next_state();//done
   moveMotors(next_state);//done -- move motors into position
-//  moveMotors(48);//done -- move motors into position
   
   updateR();//done -- update reward gotten from movement
   updateQ();//done -- update Q table based on rewards
@@ -612,7 +521,6 @@ void loop()/////////////////////////////////////////////////////////////
 
 void usbInterrupt(byte* buffer, byte nCount)
 {
-  uartFlag = true;
   if(((char)buffer[0]) == 'q')
     printQ();
   else if(((char)buffer[0]) == 'r')
@@ -623,21 +531,8 @@ void usbInterrupt(byte* buffer, byte nCount)
     SerialUSB.println(current_state);
   else if(((char)buffer[0]) == 'l')
     myCommand = 888;
-  else if(((char)buffer[0]) == ' ')
-    myCommand = 0;
-  else if(((char)buffer[0]) == 'x')//go
-    myCommand = 1;
-  else if(((char)buffer[0]) == 'z')//reset
-    myCommand = 2;
-  else if(((char)buffer[0]) == 'v')//read
-  {
-    SerialUSB.print("d: ");
-    SerialUSB.println(distanceTravelled);
-    uartFlag = false;
-  }
   else
   {
-    uartFlag = false;
     SerialUSB.print("I: ");
     SerialUSB.print(myI);
     SerialUSB.print("\tJ: ");
